@@ -129,6 +129,24 @@ td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowra
 .ddb i{display:block;height:100%;background:var(--r);opacity:.8}
 tr.now .ddb i{background:var(--accent);opacity:1}
 
+/* ---------- 估值 ---------- */
+.subs{margin-top:22px;max-width:560px}
+.vals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.vcard{background:var(--inset);border:1px solid var(--line);border-radius:var(--r-md);padding:14px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.vcard .k{font-size:12.5px;color:var(--mute)}
+.vcard .big{font:600 30px/1 var(--mono);letter-spacing:-.02em}
+.vcard .big small{font-size:15px;color:var(--mute);margin-left:2px}
+.vcard .lines{display:grid;gap:3px;font-size:12px;color:var(--mute)}
+.vcard .lines .num{color:var(--text)}
+.rng{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,rgba(61,220,151,.45),rgba(245,196,81,.45) 50%,rgba(255,107,107,.45));margin:6px 0 16px}
+.rng .md{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--text);opacity:.55}
+.rng .cur{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;transform:translate(-50%,-50%);background:var(--accent);box-shadow:0 0 0 3px var(--inset),0 0 12px var(--accent)}
+.rng .lo,.rng .hi{position:absolute;top:10px;font:10px var(--mono);color:var(--faint)}
+.rng .lo{left:0} .rng .hi{right:0}
+#hist td.pe{color:var(--text)}
+#hist th.grp{border-left:1px solid var(--line)}
+#hist td.grp{border-left:1px solid var(--line)}
+
 /* ---------- 回撤标尺 ---------- */
 .ladder{position:relative;padding:30px 0 52px;margin:4px 6px 6px}
 .lt{position:relative;height:8px;border-radius:99px;background:rgba(148,163,184,.12)}
@@ -198,7 +216,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
 
 /* ---------- 响应式 ---------- */
 @media (max-width:980px){
-  .gauges,.pools{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gauges,.pools,.vals{grid-template-columns:repeat(2,minmax(0,1fr))}
   .split{grid-template-columns:1fr}
 }
 @media (max-width:600px){
@@ -218,6 +236,9 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
   .g-num{font-size:24px}
   .g-read{gap:6px;flex-direction:column}
   .pools{grid-template-columns:1fr}
+  .vals{gap:8px}
+  .vcard{padding:11px 10px}
+  .vcard .big{font-size:24px}
   input[type=number]{font-size:16px;width:62px}
   input.wide{width:112px}
   th,td{padding:8px 6px;font-size:13px}
@@ -250,18 +271,24 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     <div class="panel">
       <div class="ph"><h3>恐慌温度计</h3><span class="aside">刻度线是分级阈值，回撤仪表上的刻度是你的买入档位</span></div>
       <div class="gauges" id="metrics"><div class="note">检查中…</div></div>
-      <div class="split">
-        <div>
-          <div class="label">CNN 七项分指标</div>
-          <div id="chips"></div>
-          <div class="si-axis"><span></span><span><span>极度恐惧</span><span>中性</span><span>极度贪婪</span></span><span></span></div>
-        </div>
-        <div>
-          <div class="label">历史对照 · 近 30 年标普 500 跌幅 ≥ 15%</div>
-          <div class="tablewrap" id="hist"></div>
-          <div class="note" style="margin-top:8px">VIX 为收盘价。恐惧贪婪指数 CNN 只提供 2021 年以后的数据，之前标"—"。2022、2025 年和"现在"由 CNN 接口实时计算，更早的 VIX 按 CBOE 公开历史整理，可能有小数误差。"收复"指从最低点回到危机前高点的用时。</div>
-        </div>
+      <div class="subs">
+        <div class="label">CNN 七项分指标</div>
+        <div id="chips"></div>
+        <div class="si-axis"><span></span><span><span>极度恐惧</span><span>中性</span><span>极度贪婪</span></span><span></span></div>
       </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>估值 · 市盈率</h3><span class="aside" id="valAsOf"></span></div>
+      <div class="vals" id="vals"><div class="note">读取中…</div></div>
+      <div class="note" style="margin-top:12px">静态 PE ＝ 股价 ÷ 过去 12 个月盈利；远期 PE ＝ 股价 ÷ 分析师预计的未来 12 个月盈利。条形是 1990 年（纳指 100 为 2001 年）以来远期 PE 的范围，竖线是中位数，圆点是现在。远期 PE 各家口径不同，同一天可能相差 1～3 倍（例如 11/20 华尔街日报给出的标普远期 PE 是 18.05、纳指 100 是 19.93），只适合和同一来源的历史比，不要跨来源比。</div>
+      <div class="note">估值数据：<a href="https://historyofmarket.com/" target="_blank" rel="noopener">History of Market (historyofmarket.com)</a>，CC BY 4.0。</div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>历史对照 · 近 30 年标普 500 跌幅 ≥ 15%</h3></div>
+      <div class="tablewrap" id="hist"></div>
+      <div class="note" style="margin-top:8px">VIX 为收盘价。恐惧贪婪指数 CNN 只提供 2021 年以后的数据，之前标"—"；纳指 100 远期 PE 从 2001 年开始才有。2022、2025 年和"现在"的 VIX、恐惧贪婪由 CNN 接口实时计算，更早的 VIX 按 CBOE 公开历史整理，可能有小数误差。PE 取高点和最低点当周（静态 PE 取当月）。2009 年静态 PE 高达 110，是因为企业盈利暴跌，不代表股价贵——这正是熊市里要同时看远期 PE 的原因。"收复"指从最低点回到危机前高点的用时。</div>
     </div>
 
     <div class="panel">
@@ -443,23 +470,31 @@ const Panic = (() => {
 
   // 近 30 年标普 500 跌幅 ≥15% 的危机（dd=最大跌幅%，vix=期间最高收盘，vixLow=见底当天，fg=恐惧贪婪最低，fgLow=见底当天，rec=从低点收复前高用时）
   const HIST = [
-    {name:'1998 俄罗斯/LTCM 危机', when:'1998.07–1998.10', dd:19.3, vix:45.7, vixLow:'约 45', fg:null, fgLow:null, rec:'约 3 个月'},
-    {name:'2000–02 互联网泡沫',     when:'2000.03–2002.10', dd:49.1, vix:45.1, vixLow:'约 42', fg:null, fgLow:null, rec:'约 4.5 年'},
-    {name:'2007–09 金融危机',       when:'2007.10–2009.03', dd:56.8, vix:80.9, vixLow:'约 50', fg:null, fgLow:null, rec:'约 4 年'},
-    {name:'2010 闪崩/欧债',         when:'2010.04–2010.07', dd:16.0, vix:45.8, vixLow:'约 30', fg:null, fgLow:null, rec:'约 4 个月'},
-    {name:'2011 美债降级',          when:'2011.04–2011.10', dd:19.4, vix:48.0, vixLow:'约 45', fg:null, fgLow:null, rec:'约 5 个月'},
-    {name:'2018 年底加息恐慌',      when:'2018.09–2018.12', dd:19.8, vix:36.1, vixLow:'36.1', fg:null, fgLow:null, rec:'约 4 个月'},
-    {name:'2020 新冠疫情',          when:'2020.02–2020.03', dd:33.9, vix:82.7, vixLow:'61.6', fg:null, fgLow:null, rec:'约 5 个月'},
-    {name:'2022 通胀加息熊市',      when:'2022.01–2022.10', dd:25.4, vix:36.5, vixLow:'33.6', fg:3, fgLow:16, rec:'约 15 个月'},
-    {name:'2025 关税冲击',          when:'2025.02–2025.04', dd:18.9, vix:52.3, vixLow:'52.3', fg:3, fgLow:3, rec:'约 2.5 个月'}
+    {name:'1998 俄罗斯/LTCM 危机', when:'1998.07–1998.10', dd:19.3, vix:45.7, vixLow:'约 45', fg:null, fgLow:null, rec:'约 3 个月',  spF0:22.9, spF1:20.1, spT1:27.2,  ndF0:null, ndF1:null},
+    {name:'2000–02 互联网泡沫',     when:'2000.03–2002.10', dd:49.1, vix:45.1, vixLow:'约 42', fg:null, fgLow:null, rec:'约 4.5 年', spF0:25.2, spF1:14.3, spT1:29.2,  ndF0:null, ndF1:23.9},
+    {name:'2007–09 金融危机',       when:'2007.10–2009.03', dd:56.8, vix:80.9, vixLow:'约 50', fg:null, fgLow:null, rec:'约 4 年',   spF0:15.1, spF1:10.4, spT1:110.4, ndF0:23.2, ndF1:13.2},
+    {name:'2010 闪崩/欧债',         when:'2010.04–2010.07', dd:16.0, vix:45.8, vixLow:'约 30', fg:null, fgLow:null, rec:'约 4 个月',  spF0:14.1, spF1:11.4, spT1:15.7,  ndF0:16.6, ndF1:13.3},
+    {name:'2011 美债降级',          when:'2011.04–2011.10', dd:19.4, vix:48.0, vixLow:'约 45', fg:null, fgLow:null, rec:'约 5 个月',  spF0:13.1, spF1:10.5, spT1:13.9,  ndF0:14.8, ndF1:11.7},
+    {name:'2018 年底加息恐慌',      when:'2018.09–2018.12', dd:19.8, vix:36.1, vixLow:'36.1', fg:null, fgLow:null, rec:'约 4 个月',   spF0:17.0, spF1:14.1, spT1:19.4,  ndF0:20.0, ndF1:16.0},
+    {name:'2020 新冠疫情',          when:'2020.02–2020.03', dd:33.9, vix:82.7, vixLow:'61.6', fg:null, fgLow:null, rec:'约 5 个月',   spF0:19.2, spF1:13.9, spT1:22.8,  ndF0:23.3, ndF1:17.7},
+    {name:'2022 通胀加息熊市',      when:'2022.01–2022.10', dd:25.4, vix:36.5, vixLow:'33.6', fg:3, fgLow:16, rec:'约 15 个月',      spF0:21.4, spF1:15.5, spT1:20.4,  ndF0:28.4, ndF1:19.1},
+    {name:'2025 关税冲击',          when:'2025.02–2025.04', dd:18.9, vix:52.3, vixLow:'52.3', fg:3, fgLow:3, rec:'约 2.5 个月',       spF0:22.3, spF1:18.3, spT1:24.6,  ndF0:27.2, ndF1:21.0}
   ];
   const ddBar = (v) => `<span class="ddb"><i style="width:${Math.min(100, v/60*100).toFixed(0)}%"></i></span>`;
   function renderHist(d){
-    let h='<table><thead><tr><th>事件</th><th>期间</th><th>最大跌幅</th><th>VIX 最高</th><th>见底 VIX</th><th>F&amp;G 最低</th><th>见底 F&amp;G</th><th>收复</th></tr></thead><tbody>';
+    const f1 = v => v==null ? '—' : Number(v).toFixed(1);
+    const arrow = (a,b) => (a==null && b==null) ? '—' : `${f1(a)} → ${f1(b)}`;
+    let h='<table><thead><tr><th>事件</th><th>期间</th><th>最大跌幅</th><th>VIX 最高</th><th>见底 VIX</th><th>F&amp;G 最低</th><th>见底 F&amp;G</th>'
+      + '<th class="grp">标普远期 PE<br>高点 → 底部</th><th>标普静态 PE<br>底部</th><th class="grp">纳指100 远期 PE<br>高点 → 底部</th><th class="grp">收复</th></tr></thead><tbody>';
     HIST.forEach(e=>{
-      h+=`<tr><td>${e.name}</td><td class="n">${e.when}</td><td class="n">${ddBar(e.dd)}-${e.dd.toFixed(1)}%</td><td class="n">${e.vix.toFixed(1)}</td><td class="n">${e.vixLow}</td><td class="n">${e.fg??'—'}</td><td class="n">${e.fgLow??'—'}</td><td class="n">${e.rec}</td></tr>`;
+      h+=`<tr><td>${e.name}</td><td class="n">${e.when}</td><td class="n">${ddBar(e.dd)}-${e.dd.toFixed(1)}%</td><td class="n">${e.vix.toFixed(1)}</td><td class="n">${e.vixLow}</td><td class="n">${e.fg??'—'}</td><td class="n">${e.fgLow??'—'}</td>`
+        + `<td class="n pe grp">${arrow(e.spF0,e.spF1)}</td><td class="n pe">${f1(e.spT1)}</td><td class="n pe grp">${arrow(e.ndF0,e.ndF1)}</td><td class="n grp">${e.rec}</td></tr>`;
     });
-    if(d) h+=`<tr class="now"><td>现在</td><td class="n">${d.peakDate.toISOString().slice(0,7).replace('-','.')}–</td><td class="n">${ddBar(d.dd*100)}-${(d.dd*100).toFixed(1)}%</td><td class="n">${fmt(d.vixMaxEp,1)}</td><td class="n">${fmt(d.vix,1)} 今</td><td class="n">${fmt(d.fgMinEp,0)}</td><td class="n">${fmt(d.fg,0)} 今</td><td class="n">进行中</td></tr>`;
+    if(d){
+      const V = window.VAL || {};
+      h+=`<tr class="now"><td>现在</td><td class="n">${d.peakDate.toISOString().slice(0,7).replace('-','.')}–</td><td class="n">${ddBar(d.dd*100)}-${(d.dd*100).toFixed(1)}%</td><td class="n">${fmt(d.vixMaxEp,1)}</td><td class="n">${fmt(d.vix,1)} 今</td><td class="n">${fmt(d.fgMinEp,0)}</td><td class="n">${fmt(d.fg,0)} 今</td>`
+        + `<td class="n pe grp">${V.ok ? arrow(V.sp.fwdPeak, V.sp.fwd)+' 今' : '—'}</td><td class="n pe">${V.ok ? f1(V.sp.trail)+' 今' : '—'}</td><td class="n pe grp">${V.ok ? arrow(V.nd.fwdPeak, V.nd.fwd)+' 今' : '—'}</td><td class="n grp">进行中</td></tr>`;
+    }
     $('hist').innerHTML=h+'</tbody></table>';
   }
 
@@ -635,6 +670,61 @@ const Panic = (() => {
     }
   }
   renderAll();
+  return { run, rerenderHist: () => { if(last) renderHist(last); } };
+})();
+
+/* =====================================================================
+   估值：标普 500 / 纳指 100 的静态 PE 和远期 PE
+   数据来自 History of Market（historyofmarket.com，CC BY 4.0），允许网页直接读取。
+   远期 PE 用它每天更新的 forwardOwn 序列；历史范围和中位数用它的周度序列（标普 1990 起，纳指 100 2001 起）。
+   ===================================================================== */
+const Val = (() => {
+  const SRC = {sp:'https://historyofmarket.com/api/sp500/forward-pe.json', nd:'https://historyofmarket.com/api/ndx/forward-pe.json'};
+  const PEAK = '2026-10-06';   // 这一轮标普前高
+  const last = a => a && a.length ? a[a.length-1] : null;
+  const atOrBefore = (a, d) => { let r=null; for(const x of a){ if(x.date<=d) r=x; else break; } return r; };
+  function stats(arr){ const v=arr.map(x=>x.value).filter(x=>x!=null).sort((a,b)=>a-b); return {min:v[0], max:v[v.length-1], med:v[Math.floor(v.length/2)], all:v}; }
+  function summarize(j){
+    const fs = j.forward || [], fo = j.forwardOwn || [];
+    const series = fs.concat(fo.filter(x => !fs.length || x.date > last(fs).date));
+    const cur = last(fo) || last(fs);
+    const peak = atOrBefore(series, PEAK);
+    const st = stats(fs);
+    const pct = st.all.length ? st.all.filter(x=>x<cur.value).length/st.all.length : null;
+    return { trail: j.current && j.current.trailing, fwd: cur && cur.value, fwdDate: cur && cur.date,
+             fwdPeak: peak && peak.value, min: st.min, max: st.max, med: st.med, pct, since: fs.length ? fs[0].date.slice(0,4) : '' };
+  }
+  const fx = v => v==null ? '—' : Number(v).toFixed(1);
+  function card(title, big, lines, rng){
+    let bar = '';
+    if(rng){
+      const lo = Math.floor(rng.min), hi = Math.ceil(Math.min(rng.max, 35));
+      const x = v => Math.max(0, Math.min(100, (v-lo)/(hi-lo)*100)).toFixed(1);
+      bar = `<div class="rng"><span class="md" style="left:${x(rng.med)}%"></span><span class="cur" style="left:${x(rng.v)}%"></span><span class="lo">${lo}</span><span class="hi">${hi}${rng.max>35?'+':''}</span></div>`;
+    }
+    return `<div class="vcard"><div class="k">${title}</div><div class="big">${big}<small>倍</small></div>${bar}<div class="lines">${lines.map(l=>`<div>${l}</div>`).join('')}</div></div>`;
+  }
+  function render(V){
+    const N = s => `<span class="num">${s}</span>`;
+    const chg = (a,b) => (a&&b) ? `${b<a?'−':'+'}${Math.abs((b/a-1)*100).toFixed(0)}%` : '—';
+    document.getElementById('vals').innerHTML =
+      card('标普 500 · 静态 PE', fx(V.sp.trail), ['1990 年以来中位数约 '+N('22.5'), '熊市里盈利下滑会让它失真，要和远期一起看']) +
+      card('标普 500 · 远期 PE', fx(V.sp.fwd), [`${V.sp.since} 年以来中位数 ${N(fx(V.sp.med))} · 低于 ${N(Math.round(V.sp.pct*100)+'%')} 的时间`, `前高时 ${N(fx(V.sp.fwdPeak))}，已压缩 ${N(chg(V.sp.fwdPeak,V.sp.fwd))}`, `历次危机底部 ${N('10.4–20.1')}`], {min:V.sp.min,max:V.sp.max,med:V.sp.med,v:V.sp.fwd}) +
+      card('纳指 100 · 静态 PE', fx(V.nd.trail), ['本数据源只有 2026 年起的纳指静态 PE，暂无长期历史可比']) +
+      card('纳指 100 · 远期 PE', fx(V.nd.fwd), [`${V.nd.since} 年以来中位数 ${N(fx(V.nd.med))} · 低于 ${N(Math.round(V.nd.pct*100)+'%')} 的时间`, `前高时 ${N(fx(V.nd.fwdPeak))}，已压缩 ${N(chg(V.nd.fwdPeak,V.nd.fwd))}`, `历次危机底部 ${N('11.7–23.9')}`], {min:V.nd.min,max:V.nd.max,med:V.nd.med,v:V.nd.fwd});
+    document.getElementById('valAsOf').textContent = '远期 PE 截至 ' + (V.sp.fwdDate||'—');
+  }
+  async function run(){
+    try{
+      const [a,b] = await Promise.all([SRC.sp, SRC.nd].map(u => withTimeout(fetch(u), 20000).then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })));
+      const V = {ok:true, sp:summarize(a), nd:summarize(b)};
+      window.VAL = V; render(V); Panic.rerenderHist();
+      log(`估值：标普 静态 ${fx(V.sp.trail)} / 远期 ${fx(V.sp.fwd)}；纳指100 静态 ${fx(V.nd.trail)} / 远期 ${fx(V.nd.fwd)}`);
+    }catch(e){
+      log('估值数据读取失败：'+e.message);
+      document.getElementById('vals').innerHTML = '<div class="note">估值数据这次没读到（来源网站暂时不可用），稍后再点一次「立即检查」。</div>';
+    }
+  }
   return { run };
 })();
 
@@ -947,9 +1037,9 @@ async function runAll(){
   const btn=document.getElementById('run'), lbl=btn.querySelector('span');
   btn.disabled=true; lbl.textContent='检查中…';
   log('开始检查');
-  const [fgTime]=await Promise.all([Panic.run(), Usdc.run()]);
+  const [fgTime]=await Promise.all([Panic.run(), Usdc.run(), Val.run()]);
   const f=t=>t.toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('oTime').innerHTML='<span>检查 '+f(new Date())+'</span>'+(fgTime?'<span>美股数据 '+f(fgTime)+'</span>':'')+'<span>数据源 CNN · Morpho · DefiLlama · Ethereum RPC</span>';
+  document.getElementById('oTime').innerHTML='<span>检查 '+f(new Date())+'</span>'+(fgTime?'<span>美股数据 '+f(fgTime)+'</span>':'')+'<span>数据源 CNN · History of Market · Morpho · DefiLlama · Ethereum RPC</span>';
   log('全部检查完成');
   btn.disabled=false; lbl.textContent='立即检查';
 }
