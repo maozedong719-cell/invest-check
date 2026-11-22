@@ -268,7 +268,9 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
       <div class="ph"><h3>分档买入规则</h3><span class="aside">可直接修改，自动保存在这台设备的浏览器里</span></div>
       <div class="params">
         <label>回撤弹药 <input type="number" id="ammo" class="wide"> 美元</label>
-        <label>VOO 收盘最高价 <input type="number" id="vooPeak" class="wide" step="0.01"></label>
+        <label>其中已在券商账户 <input type="number" id="ready" class="wide"> 美元</label>
+        <label>标普前高 <input type="number" id="spxPeak" class="wide" step="0.01"></label>
+        <label>VOO 前高 <input type="number" id="vooPeak" class="wide" step="0.01"></label>
         <label><input type="checkbox" id="needFear"> 第 1 档需恐慌确认（VIX ≥ 30 或恐惧贪婪 ≤ 25）</label>
       </div>
       <div id="ladder"></div>
@@ -305,7 +307,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     <summary>数据来源与计算方法</summary>
     <div class="body">
       <h4>美股</h4>
-      数据来自 CNN 恐惧与贪婪指数接口（含标普 500 收盘价和 VIX），交易时段内会延迟更新，收盘后为当天最终值。回撤 = 标普 500 现价相对过去一年最高收盘价的跌幅。VOO 和标普 500 的回撤几乎一致，VOO 触发价按"VOO 最高价 ×（1 − 回撤）"换算，现价也是估算，下单前以券商报价为准。默认档位只是示例，改完自动保存；"已执行"打勾后这一档不再提醒。定投最后一期（11 月 28 日，16.9 万美元）不在这张表里。
+      数据来自 CNN 恐惧与贪婪指数接口（含标普 500 收盘价和 VIX），交易时段内会延迟更新，收盘后为当天最终值。回撤 = 标普 500 现价相对"标普前高"的跌幅（规则里可改，创新高时自动上调），不受一年窗口限制。VOO 和标普 500 的回撤几乎一致，VOO 触发价按"VOO 最高价 ×（1 − 回撤）"换算，现价也是估算，下单前以券商报价为准。默认档位只是示例，改完自动保存；"已执行"打勾后这一档不再提醒。定投资金不在这张表里。
       <h4>USDC</h4>
       数据实时来自以太坊链上合约（经公共节点读取）和 Morpho 官方 API。Aave / Compound 的 APY 是链上当前利率换算的，不含奖励代币。30 天平均：Morpho 两个金库按份额价格 30 天的实际涨幅折算年化（已扣管理费，就是你实际拿到的）；Aave / Compound 用 DefiLlama 记录的每日存款利率取 30 天均值。排序和利差判断都以 30 天平均为准，"当天"只作参考。本页只看数字，查不到黑客攻击、协议公告这类新闻。TVL 的"较上次"是和这台设备上一次打开本页时比较。
     </div>
@@ -356,7 +358,10 @@ function gauge(v, min, max, zones, ticks, k, text){
    ===================================================================== */
 const Panic = (() => {
   const DEFAULT_CFG = {
-    ammo: 0,          // 等大跌用的弹药：两个账户的 SGOV 合计约 7,337 股
+    ammo: 0,         // 回撤弹药总额（美元）
+    ready: 0,         // 其中已经放在券商账户里、随时能下单的部分（美元）
+    spxPeak: 7818.93,      // 标普 500 收盘前高（2026-10-06），回撤以它为准，不受一年窗口限制
+    peakDate: '2026-10-06',
     vooPeak: 716.20,       // VOO 收盘最高价（2026-10-06）
     needFear: true,        // 第 1 档是否要求恐慌确认
     tiers: [               // dd = 标普 500 距最高点回撤（%），pct = 投入弹药的比例（%）
@@ -375,8 +380,19 @@ const Panic = (() => {
   const N = (s) => `<span class="num">${s}</span>`;
 
   function loadCfg(){
-    try{ const s = JSON.parse(localStorage.getItem(LS_KEY)); if(s && Array.isArray(s.tiers)) return s; }catch(e){}
-    return JSON.parse(JSON.stringify(DEFAULT_CFG));
+    try{
+      const s = JSON.parse(localStorage.getItem(LS_KEY));
+      if(s && Array.isArray(s.tiers)){
+        if(!s.v){   // 旧版配置升级：补上新字段；仍是旧默认弹药的改成新默认值
+          if(s.ammo === 0) s.ammo = DEFAULT_CFG.ammo;
+          if(s.ready == null) s.ready = DEFAULT_CFG.ready;
+          if(s.spxPeak == null){ s.spxPeak = DEFAULT_CFG.spxPeak; s.peakDate = DEFAULT_CFG.peakDate; }
+          s.v = 2;
+        }
+        return s;
+      }
+    }catch(e){}
+    return Object.assign(JSON.parse(JSON.stringify(DEFAULT_CFG)), {v:2});
   }
   function saveCfg(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }catch(e){} }
   let cfg = loadCfg();
@@ -398,6 +414,13 @@ const Panic = (() => {
     const sp = j.market_momentum_sp500.data.filter(p => p.y != null);
     let peak = 0, peakX = 0;
     sp.forEach(p => { if(p.y > peak){ peak = p.y; peakX = p.x; } });
+    // 回撤以固定前高为准：熊市拖过一年时，一年窗口会把前高"忘掉"，深档位就永远触发不了
+    if(cfg.spxPeak && cfg.spxPeak >= peak){
+      peak = cfg.spxPeak; peakX = Date.parse((cfg.peakDate || '2026-10-06') + 'T20:00:00Z');
+    } else if(peak > 0){   // 创了新高：标普前高和 VOO 前高按比例一起上调并保存
+      if(cfg.spxPeak) cfg.vooPeak = +(cfg.vooPeak * peak / cfg.spxPeak).toFixed(2);
+      cfg.spxPeak = +peak.toFixed(2); cfg.peakDate = new Date(peakX).toISOString().slice(0,10); saveCfg();
+    }
     const spx = sp[sp.length-1].y;
     const vixArr = j.market_volatility_vix.data.filter(p => p.y != null);
     const fgArr = j.fear_and_greed_historical.data.filter(p => p.y != null);
@@ -553,6 +576,15 @@ const Panic = (() => {
     } else if(!hits.length){
       L.push({k:'i', h:'所有档位都已执行或已触发。'});
     }
+    // 资金调拨提醒：前 4 档要用的钱要提前到券商账户（历史上从回撤 15% 跌到 25%~30% 最快只用 3~11 天）
+    const need4 = cfg.tiers.slice(0,4).filter(t=>!t.done).reduce((a,t)=>a+cfg.ammo*t.pct/100,0);
+    const gap = Math.max(0, need4 - (cfg.ready||0));
+    const t1 = cfg.tiers[0];
+    if(gap > 0 && t1){
+      const t1hit = t1.done || d.dd*100 >= t1.dd;
+      if(t1hit) L.push({k:'o', h:`<b>资金调拨：第 1 档已到，现在就把约 $${fmt(gap)} 从 USDC 换成美元、转进券商账户先买 SGOV。</b>前 4 档共需约 $${fmt(need4)}，券商账户里已备好 $${fmt(cfg.ready||0)}。转账通常要 2~5 个工作日，而历史上从回撤 15% 跌到 30% 最快只用了 11 天（2020 年）。`});
+      else if(d.dd*100 >= t1.dd - 5) L.push({k:'y', h:`资金准备：离第 1 档只差几个百分点。第 1 档一触发，就把约 $${fmt(gap)} 从 USDC 调到券商账户（前 4 档共需约 $${fmt(need4)}，券商账户已备好 $${fmt(cfg.ready||0)}）。`});
+    }
     L.push({k: fear?'o':'y', h:`恐慌信号：VIX <span class="num">${fmt(d.vix,1)}</span>（${vixLevel(d.vix)[1]}）· 恐惧贪婪 <span class="num">${fmt(d.fg,0)}</span>（${fgLevel(d.fg)[1]}）· 回撤 <span class="num">${pct(d.dd)}</span>（${ddLevel(d.dd)[1]}）。${fear?'<b>恐慌确认条件已满足。</b>':'恐慌确认条件未满足（需要 VIX ≥ 30 或恐惧贪婪 ≤ 25）。'}`});
     L.push({k:'n', h:'极度恐慌往往持续很短，2020 年 3 月从最低点反弹回去只用了约 5 个月。规则是你冷静时定的，触发了就按规则执行，不必再猜底。'});
     $('advice').innerHTML = items(L);
@@ -560,7 +592,7 @@ const Panic = (() => {
   }
 
   function renderAll(){
-    $('ammo').value = cfg.ammo; $('vooPeak').value = cfg.vooPeak; $('needFear').checked = !!cfg.needFear;
+    $('ammo').value = cfg.ammo; $('ready').value = cfg.ready || 0; $('spxPeak').value = cfg.spxPeak || ''; $('vooPeak').value = cfg.vooPeak; $('needFear').checked = !!cfg.needFear;
     renderRules();
     if(last){ renderMetrics(last); renderAdvice(last); }
   }
@@ -578,6 +610,12 @@ const Panic = (() => {
   });
   $('ammo').addEventListener('change', e => { cfg.ammo = parseFloat(e.target.value)||0; saveCfg(); renderAll(); });
   $('vooPeak').addEventListener('change', e => { cfg.vooPeak = parseFloat(e.target.value)||0; saveCfg(); renderAll(); });
+  $('ready').addEventListener('change', e => { cfg.ready = parseFloat(e.target.value)||0; saveCfg(); renderAll(); });
+  $('spxPeak').addEventListener('change', e => {
+    cfg.spxPeak = parseFloat(e.target.value)||0; saveCfg();
+    if(last && cfg.spxPeak > 0){ last.spxPeak = cfg.spxPeak; last.dd = 1 - last.spx / cfg.spxPeak; }
+    renderAll();
+  });
   $('needFear').addEventListener('change', e => { cfg.needFear = e.target.checked; saveCfg(); renderAll(); });
   $('addTier').onclick = () => { const lastDd = cfg.tiers.length ? cfg.tiers[cfg.tiers.length-1].dd : 10; cfg.tiers.push({dd:lastDd+5,pct:0,done:false}); saveCfg(); renderAll(); };
   $('resetCfg').onclick = () => { if(confirm('恢复默认示例？你改过的档位和"已执行"勾选都会清掉。')){ cfg = JSON.parse(JSON.stringify(DEFAULT_CFG)); saveCfg(); renderAll(); } };
