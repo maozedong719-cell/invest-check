@@ -9,6 +9,11 @@ on:
         description: "发一条测试推送到手机"
         type: boolean
         default: true
+      level:
+        description: "测试推送的级别"
+        type: choice
+        options: [info, warn, crit]
+        default: info
 
 permissions:
   contents: read
@@ -37,7 +42,7 @@ jobs:
       - name: 检查四个 USDC 池子
         env:
           BARK_KEY: ${{ secrets.BARK_KEY }}
-        run: python3 watcher/chain_watch.py --state watch-state.json ${{ inputs.test && '--test' || '' }}
+        run: python3 watcher/chain_watch.py --state watch-state.json ${{ inputs.test && format('--test --test-level {0}', inputs.level) || '' }}
 
       - name: 保存状态
         if: always() && hashFiles('watch-state.json') != ''

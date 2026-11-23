@@ -306,6 +306,8 @@ def main():
     ap.add_argument("--state", default="watch-state.json")
     ap.add_argument("--dry-run", action="store_true", help="只打印，不发推送")
     ap.add_argument("--test", action="store_true", help="发一条测试推送")
+    ap.add_argument("--test-level", choices=["info", "warn", "crit"], default="info",
+                    help="测试推送的级别：info 普通 / warn 时效性 / crit 重要警告（无视静音）")
     args = ap.parse_args()
 
     if not args.dry_run and not bark_key():
@@ -324,7 +326,10 @@ def main():
     active, events = evaluate(res, errs, state, now)
     print(summary(res, errs))
 
-    if args.test or first_run:
+    if args.test and args.test_level != "info":
+        push(args.test_level, "测试推送（不是真实报警）",
+             "这是一条测试，用来确认这个级别的通知会不会响铃和弹出。\n" + summary(res, errs), args.dry_run)
+    elif args.test or first_run:
         push("info", "盯链机器人已连接" if first_run else "测试推送",
              "每 10 分钟检查一次 4 个 USDC 池子，有异常会推送到这里。\n" + summary(res, errs), args.dry_run)
 
