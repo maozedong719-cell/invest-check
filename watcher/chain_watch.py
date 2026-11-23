@@ -12,6 +12,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.request
 
 # ---------- 监控对象 ----------
@@ -264,6 +265,13 @@ def bark_key():
     return raw
 
 
+def redact(text, key):
+    text = str(text)
+    if key:
+        text = text.replace(key, "***")
+    return text[:200]
+
+
 def push(level, title, body, dry):
     bark_level = {"crit": "critical", "warn": "timeSensitive", "info": "active", "quiet": "passive"}[level]
     tag = {"crit": "【紧急】", "warn": "【注意】", "info": "", "quiet": ""}[level]
@@ -279,7 +287,14 @@ def push(level, title, body, dry):
             r = post_json("https://api.day.app/push", payload)
             if r.get("code") == 200:
                 return
-            print("  Bark 返回：", r.get("message"))
+            print("  Bark 返回：", redact(r.get("message", ""), payload["device_key"]))
+        except urllib.error.HTTPError as e:
+            try:
+                msg = json.loads(e.read()).get("message", "")
+            except Exception:
+                msg = ""
+            # 日志是公开的，Bark 的报错里会带上密钥，必须先抹掉
+            print(f"  Bark 发送失败：HTTP {e.code} {redact(msg, payload['device_key'])}；密钥长度 {len(payload['device_key'])}")
         except Exception as e:
             print("  Bark 发送失败：", type(e).__name__)
         time.sleep(2)
