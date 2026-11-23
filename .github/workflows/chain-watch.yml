@@ -1,0 +1,57 @@
+name: 盯链机器人
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+    inputs:
+      test:
+        description: "发一条测试推送到手机"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: chain-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: watcher
+
+      - name: 读取上次的状态
+        uses: actions/cache/restore@v4
+        with:
+          path: watch-state.json
+          key: watch-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: watch-state-
+
+      - name: 检查四个 USDC 池子
+        env:
+          BARK_KEY: ${{ secrets.BARK_KEY }}
+        run: python3 watcher/chain_watch.py --state watch-state.json ${{ inputs.test && '--test' || '' }}
+
+      - name: 保存状态
+        if: always() && hashFiles('watch-state.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: watch-state.json
+          key: watch-state-${{ github.run_id }}-${{ github.run_attempt }}
+
+      # 公开仓库 60 天没有提交时，GitHub 会自动停用定时任务；每周一重新启用一次
+      - name: 保持定时任务启用
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$(date -u +%u%H)" = "100" ]; then
+            gh api -X PUT "repos/${{ github.repository }}/actions/workflows/chain-watch.yml/enable" || true
+          fi
