@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""USDC 四池盯链机器人（另外盯 USDe 脱锚和 Aave 上的 USDe 抵押规模）。
+"""USDC 四池盯链机器人（另外盯 USDe 脱锚、Aave 上的 USDe 抵押规模和 Compound 新的链上提案）。
 
 由 GitHub Actions 每 10 分钟运行一次，读取以太坊主网上 4 个 USDC 池子的链上数据，
 发现异常时通过 Bark 推送到手机。只用 Python 标准库。
@@ -31,6 +31,7 @@ A_USDE = "0x4F5923Fc5FD4a93352581b38B7cD26943012DECF"       # Aave V3 aEthUSDe
 A_SUSDE = "0x4579a27aF00A62C0EB156349f31B345c08386419"      # Aave V3 aEthsUSDe
 SUSDE = "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497"
 EXTRA_NAMES = {"usde": "USDe"}
+COMP_GOV = "0x309a862bbC1A00e45506cB8A802D1ff10004c8C0"     # Compound 链上治理（Governor），改池子参数都要经过它
 
 RPCS = [
     "https://ethereum-rpc.publicnode.com",
@@ -158,9 +159,17 @@ def read_usde():
     return {"price": price, "coll": coll}
 
 
+def read_gov():
+    return {"count": eth_call(COMP_GOV, "0xda35c664")}   # proposalCount()
+
+
 def read_all():
     """返回 {pool: data} 和 {pool: 错误信息}。"""
     res, errs = {}, {}
+    try:
+        res["gov"] = read_gov()
+    except Exception as e:  # 治理提案只是提醒，读不到就下次再看
+        errs["gov"] = str(e)
     for key, fn in (("aave", read_aave), ("comp", read_comp), ("usde", read_usde)):
         try:
             res[key] = fn()
@@ -292,6 +301,18 @@ def evaluate(res, errs, state, now):
                            f"现在是 {fmt_usd(u['coll'])}（11/24 时约 13 亿）。规模越大，USDe 出事对 Aave USDC 池的冲击越大。"))
         state["usde_band"] = band
 
+    # 7) Compound 有新的链上治理提案（投票期加时间锁要好几天，看到了还来得及撤）
+    if "gov" in res:
+        n, prev = res["gov"]["count"], state.get("comp_prop")
+        if prev is not None and n > prev:
+            ids = list(range(prev + 1, n + 1))[-5:]
+            links = "\n".join(f"https://www.tally.xyz/gov/compound/proposal/{i}" for i in ids)
+            events.append(("info", f"Compound 有新的链上提案：第 {'、'.join(map(str, ids))} 号",
+                           "大多是例行的参数调整。点开看一下是不是在改 USDC 池（cUSDCv3）的抵押品、"
+                           "价格来源或权限；投票和生效要好几天，有问题来得及撤。\n" + links,
+                           f"https://www.tally.xyz/gov/compound/proposal/{ids[-1]}"))
+        state["comp_prop"] = n
+
     return active, events
 
 
@@ -327,14 +348,14 @@ def redact(text, key):
     return text[:200]
 
 
-def push(level, title, body, dry):
+def push(level, title, body, dry, url=PAGE):
     bark_level = {"crit": "critical", "warn": "timeSensitive", "info": "active", "quiet": "passive"}[level]
     tag = {"crit": "【紧急】", "warn": "【注意】", "info": "", "quiet": ""}[level]
     print(f"[推送 {level}] {tag}{title}\n  {body.replace(chr(10), chr(10) + '  ')}")
     if dry:
         return
     payload = {"device_key": bark_key(), "title": tag + title, "body": body,
-               "group": "盯链机器人", "url": PAGE, "level": bark_level}
+               "group": "盯链机器人", "url": url, "level": bark_level}
     if level == "crit":
         payload.update({"sound": "alarm", "volume": 8})
     for attempt in range(3):
@@ -403,8 +424,8 @@ def main():
         pool = POOL_NAMES.get(k) or EXTRA_NAMES.get(k, "")
         push("info", f"{pool} 已恢复正常", f"之前的异常：{alerts[aid]['title']}。现在已经解除。", args.dry_run)
         del alerts[aid]
-    for lvl, title, body in events:
-        push(lvl, title, body, args.dry_run)
+    for lvl, title, body, *url in events:   # 第 4 项（可选）是点开通知跳转的网址
+        push(lvl, title, body, args.dry_run, *url)
 
     today = dt.datetime.now(HK)
     if (not first_run and today.hour >= HEARTBEAT_HOUR_HK
