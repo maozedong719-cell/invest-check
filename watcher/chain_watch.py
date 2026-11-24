@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""USDC 四池盯链机器人。
+"""USDC 四池盯链机器人（另外盯 USDe 脱锚和 Aave 上的 USDe 抵押规模）。
 
 由 GitHub Actions 每 10 分钟运行一次，读取以太坊主网上 4 个 USDC 池子的链上数据，
 发现异常时通过 Bark 推送到手机。只用 Python 标准库。
@@ -25,6 +25,13 @@ MORPHO_VAULTS = {
 }
 POOL_NAMES = {"aave": "Aave V3", "comp": "Compound V3", **{k: v[0] for k, v in MORPHO_VAULTS.items()}}
 
+# USDe：Aave 上最大的一类稳定币抵押品（循环借贷借走的是 USDC），脱锚时 Aave USDC 池可能出坏账
+USDE_CURVE = "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"   # Curve USDe/USDC 池（coin0=USDe, coin1=USDC）
+A_USDE = "0x4F5923Fc5FD4a93352581b38B7cD26943012DECF"       # Aave V3 aEthUSDe
+A_SUSDE = "0x4579a27aF00A62C0EB156349f31B345c08386419"      # Aave V3 aEthsUSDe
+SUSDE = "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497"
+EXTRA_NAMES = {"usde": "USDe"}
+
 RPCS = [
     "https://ethereum-rpc.publicnode.com",
     "https://eth.llamarpc.com",
@@ -41,6 +48,10 @@ OUT_24H_WARN = 0.20                      # 24 小时内存款从高点流出比�
 SHARE_DROP = 0.0005                      # Morpho 份额价格下跌 0.05% 以上 = 坏账落地
 SAFE_COLLATERAL = {"cbBTC", "WBTC", "wstETH", "weETH", "WETH"}
 UNSAFE_MIN_USD = 50_000                  # 白名单外抵押品市场分到这么多钱才报警
+USDE_WARN, USDE_CRIT = 0.99, 0.97       # Curve 上卖 10 万 USDe 换到的 USDC 单价
+USDE_COLL_GROW = 0.15                    # Aave 的 USDe 系抵押品 24 小时增长 15% 以上
+USDE_COLL_STEP = 2.5e8                   # 抵押品规模每跨过一个 2.5 亿台阶（从 15 亿起）提醒一次
+USDE_COLL_FLOOR = 1.5e9
 FAIL_LIMIT = 3                           # 连续读取失败几次才报警
 REMIND = {"warn": 6 * 3600, "crit": 2 * 3600}  # 异常持续时多久再提醒一次
 LEVEL_RANK = {"warn": 1, "crit": 2}
@@ -137,10 +148,20 @@ def read_morpho():
     return out
 
 
+def read_usde():
+    sell = 100_000 * 10**18
+    out = eth_call(USDE_CURVE, "0x5e0d443f" + "0" * 64 + "1".rjust(64, "0") + hex(sell)[2:].rjust(64, "0"))
+    price = out / 1e6 / 100_000
+    # sUSDe 按金库汇率折成 USDe（convertToAssets(1e18)），再按 1 美元计
+    rate = eth_call(SUSDE, "0x07a2d13a" + hex(10**18)[2:].rjust(64, "0")) / 1e18
+    coll = total_supply(A_USDE) / 1e18 + total_supply(A_SUSDE) / 1e18 * rate
+    return {"price": price, "coll": coll}
+
+
 def read_all():
     """返回 {pool: data} 和 {pool: 错误信息}。"""
     res, errs = {}, {}
-    for key, fn in (("aave", read_aave), ("comp", read_comp)):
+    for key, fn in (("aave", read_aave), ("comp", read_comp), ("usde", read_usde)):
         try:
             res[key] = fn()
         except Exception as e:
@@ -241,6 +262,36 @@ def evaluate(res, errs, state, now):
                            "金库经理提交了：" + "；".join(lines) + "。可能是新增借贷市场或调整额度，建议看一眼。"))
         seen_pending[key] = sorted(ids)
 
+    # 6) USDe 脱锚、Aave 上 USDe 循环借贷继续加码
+    if "usde" in errs:
+        fails["usde"] = fails.get("usde", 0) + 1
+        if fails["usde"] >= FAIL_LIMIT:
+            active["data:usde"] = ("warn", "USDe 数据读取失败",
+                                   f"已连续 {fails['usde']} 次读不到 USDe 价格或 Aave 抵押规模。")
+    elif "usde" in res:
+        fails["usde"] = 0
+        u = res["usde"]
+        if u["price"] < USDE_WARN:
+            lvl = "crit" if u["price"] < USDE_CRIT else "warn"
+            active["peg:usde"] = (lvl, f"USDe 脱锚：{u['price']:.4f}",
+                                  f"在 Curve 上卖 10 万 USDe 只能换到 {u['price'] * 100_000:,.0f} USDC。"
+                                  f"Aave 上有 {fmt_usd(u['coll'])} 的 USDe 系抵押品借走了 USDC/USDT，"
+                                  "脱锚持续会让 Aave USDC 池出现坏账或取不出钱，请留意 Aave 可取现金。")
+        h = hist.setdefault("usde", [])
+        old = [v for t, v in h if now - 24 * 3600 - 1800 <= t <= now - 23 * 3600]
+        if old and u["coll"] > old[0] * (1 + USDE_COLL_GROW):
+            active["grow:usde"] = ("warn", f"Aave 上 USDe 抵押 24 小时增加 {u['coll'] / old[0] - 1:.0%}",
+                                   f"从 {fmt_usd(old[0])} 增加到 {fmt_usd(u['coll'])}，循环借贷还在加码，"
+                                   "借走的 USDC 越多，USDe 出事时 Aave 的风险越大。")
+        h.append([now, u["coll"]])
+        hist["usde"] = [x for x in h if x[0] >= now - 26 * 3600]
+        band = int(u["coll"] // USDE_COLL_STEP) if u["coll"] >= USDE_COLL_FLOOR else 0
+        prev_band = state.get("usde_band")
+        if prev_band is not None and band > prev_band:
+            events.append(("warn", f"Aave 上 USDe 抵押超过 {band * USDE_COLL_STEP / 1e8:.1f} 亿美元",
+                           f"现在是 {fmt_usd(u['coll'])}（11/24 时约 13 亿）。规模越大，USDe 出事对 Aave USDC 池的冲击越大。"))
+        state["usde_band"] = band
+
     return active, events
 
 
@@ -253,6 +304,10 @@ def summary(res, errs):
         d = res[key]
         ratio = d["liq"] / d["tvl"] if d["tvl"] else 0
         lines.append(f"{name}：存款 {fmt_usd(d['tvl'])}，可取 {ratio:.0%}")
+    if "usde" in errs:
+        lines.append("USDe：读取失败")
+    elif "usde" in res:
+        lines.append(f"USDe：Curve 价格 {res['usde']['price']:.4f}，Aave 抵押 {fmt_usd(res['usde']['coll'])}")
     return "\n".join(lines)
 
 
@@ -331,7 +386,7 @@ def main():
              "这是一条测试，用来确认这个级别的通知会不会响铃和弹出。\n" + summary(res, errs), args.dry_run)
     elif args.test or first_run:
         push("info", "盯链机器人已连接" if first_run else "测试推送",
-             "每 10 分钟检查一次 4 个 USDC 池子，有异常会推送到这里。\n" + summary(res, errs), args.dry_run)
+             "每 10 分钟检查一次 4 个 USDC 池子和 USDe，有异常会推送到这里。\n" + summary(res, errs), args.dry_run)
 
     alerts = state.setdefault("alerts", {})
     for aid, (lvl, title, body) in active.items():
@@ -344,7 +399,8 @@ def main():
         elif LEVEL_RANK[lvl] < LEVEL_RANK[prev["level"]]:
             alerts[aid]["level"] = lvl
     for aid in [a for a in alerts if a not in active]:
-        pool = POOL_NAMES.get(aid.split(":", 1)[1], "")
+        k = aid.split(":", 1)[1]
+        pool = POOL_NAMES.get(k) or EXTRA_NAMES.get(k, "")
         push("info", f"{pool} 已恢复正常", f"之前的异常：{alerts[aid]['title']}。现在已经解除。", args.dry_run)
         del alerts[aid]
     for lvl, title, body in events:
