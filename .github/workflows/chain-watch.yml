@@ -8,7 +8,7 @@ on:
       test:
         description: "发一条测试推送到手机"
         type: boolean
-        default: true
+        default: false
       level:
         description: "测试推送的级别"
         type: choice
