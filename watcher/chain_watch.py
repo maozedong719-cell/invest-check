@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""USDC 四池盯链机器人（另外盯 USDe 脱锚、Aave 上的 USDe 抵押规模和 Compound 新的链上提案）。
+"""USDC 四池盯链机器人（另外盯 USDe 脱锚、Aave 上的 USDe 抵押规模、USDC/USDT 脱锚和 Compound 新的链上提案）。
 
 由 GitHub Actions 每 10 分钟运行一次，读取以太坊主网上 4 个 USDC 池子的链上数据，
 发现异常时通过 Bark 推送到手机。只用 Python 标准库。
@@ -30,7 +30,10 @@ USDE_CURVE = "0x02950460E2b9529D0E00284A5fA2d7bDF3fA4d72"   # Curve USDe/USDC �
 A_USDE = "0x4F5923Fc5FD4a93352581b38B7cD26943012DECF"       # Aave V3 aEthUSDe
 A_SUSDE = "0x4579a27aF00A62C0EB156349f31B345c08386419"      # Aave V3 aEthsUSDe
 SUSDE = "0x9D39A5DE30e57443BfF2A8307A4256c8797A3497"
-EXTRA_NAMES = {"usde": "USDe"}
+# USDC / USDT 自己的美元价格：Chainlink 报价，偏离 0.25% 以上就会更新，最晚 24 小时更新一次
+STABLE_FEEDS = {"usdc": ("USDC", "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"),
+                "usdt": ("USDT", "0x3E7d1eAB13ad0104d2750B8863b489D65364e32D")}
+EXTRA_NAMES = {"usde": "USDe", "usdc": "USDC", "usdt": "USDT", "stable": "USDC/USDT 报价"}
 COMP_GOV = "0x309a862bbC1A00e45506cB8A802D1ff10004c8C0"     # Compound 链上治理（Governor），改池子参数都要经过它
 
 RPCS = [
@@ -50,6 +53,8 @@ SHARE_DROP = 0.0005                      # Morpho 份额价格下跌 0.05% 以�
 SAFE_COLLATERAL = {"cbBTC", "WBTC", "wstETH", "weETH", "WETH"}
 UNSAFE_MIN_USD = 50_000                  # 白名单外抵押品市场分到这么多钱才报警
 USDE_WARN, USDE_CRIT = 0.99, 0.97       # Curve 上卖 10 万 USDe 换到的 USDC 单价
+PEG_WARN, PEG_CRIT = 0.995, 0.99         # USDC / USDT 的美元价格
+FEED_STALE = 27 * 3600                   # Chainlink 报价超过 27 小时没更新就当读取失败
 USDE_COLL_GROW = 0.15                    # Aave 的 USDe 系抵押品 24 小时增长 15% 以上
 USDE_COLL_STEP = 2.5e8                   # 抵押品规模每跨过一个 2.5 亿台阶（从 15 亿起）提醒一次
 USDE_COLL_FLOOR = 1.5e9
@@ -81,6 +86,20 @@ def eth_call(to, data):
                 return int(r["result"], 16)
             last = r.get("error")
         except Exception as e:  # 换下一个节点
+            last = e
+    raise RuntimeError(f"所有 RPC 都失败：{last}")
+
+
+def eth_call_raw(to, data):
+    last = None
+    for rpc in RPCS:
+        try:
+            r = post_json(rpc, {"jsonrpc": "2.0", "id": 1, "method": "eth_call",
+                                "params": [{"to": to, "data": data}, "latest"]})
+            if r.get("result") not in (None, "0x"):
+                return r["result"]
+            last = r.get("error")
+        except Exception as e:
             last = e
     raise RuntimeError(f"所有 RPC 都失败：{last}")
 
@@ -159,6 +178,17 @@ def read_usde():
     return {"price": price, "coll": coll}
 
 
+def read_stables():
+    out = {}
+    for key, (_, feed) in STABLE_FEEDS.items():
+        r = eth_call_raw(feed, "0xfeaf968c")   # latestRoundData()
+        words = [int(r[2 + i * 64: 2 + (i + 1) * 64], 16) for i in range(5)]
+        if time.time() - words[3] > FEED_STALE:
+            raise RuntimeError(f"{key} 报价超过 27 小时没有更新")
+        out[key] = words[1] / 1e8
+    return out
+
+
 def read_gov():
     return {"count": eth_call(COMP_GOV, "0xda35c664")}   # proposalCount()
 
@@ -166,6 +196,10 @@ def read_gov():
 def read_all():
     """返回 {pool: data} 和 {pool: 错误信息}。"""
     res, errs = {}, {}
+    try:
+        res["stable"] = read_stables()
+    except Exception as e:
+        errs["stable"] = str(e)
     try:
         res["gov"] = read_gov()
     except Exception as e:  # 治理提案只是提醒，读不到就下次再看
@@ -301,7 +335,25 @@ def evaluate(res, errs, state, now):
                            f"现在是 {fmt_usd(u['coll'])}（11/24 时约 13 亿）。规模越大，USDe 出事对 Aave USDC 池的冲击越大。"))
         state["usde_band"] = band
 
-    # 7) Compound 有新的链上治理提案（投票期加时间锁要好几天，看到了还来得及撤）
+    # 7) USDC / USDT 自己脱锚：四个池子的钱全是 USDC，这是最大的单一风险
+    if "stable" in errs:
+        fails["stable"] = fails.get("stable", 0) + 1
+        if fails["stable"] >= FAIL_LIMIT:
+            active["data:stable"] = ("warn", "USDC/USDT 价格读取失败",
+                                     f"已连续 {fails['stable']} 次读不到 Chainlink 报价。")
+    elif "stable" in res:
+        fails["stable"] = 0
+        for key, price in res["stable"].items():
+            sym = STABLE_FEEDS[key][0]
+            if price < PEG_WARN:
+                lvl = "crit" if price < PEG_CRIT else "warn"
+                extra = ("你在四个池子里的钱全是 USDC，按这个价格计算本金已经缩水。"
+                         if key == "usdc" else "USDT 是最大的稳定币，也是 Aave 上第二大的稳定币市场，脱锚会冲击整个 DeFi 借贷和稳定币市场。")
+                active[f"peg:{key}"] = (lvl, f"{sym} 脱锚：{price:.4f} 美元",
+                                        f"Chainlink 报价 {sym} = {price:.4f} 美元（偏离 {1 - price:.2%}）。" + extra +
+                                        "先看官方公告和储备情况，别在恐慌中低价卖出。")
+
+    # 8) Compound 有新的链上治理提案（投票期加时间锁要好几天，看到了还来得及撤）
     if "gov" in res:
         n, prev = res["gov"]["count"], state.get("comp_prop")
         if prev is not None and n > prev:
@@ -325,6 +377,9 @@ def summary(res, errs):
         d = res[key]
         ratio = d["liq"] / d["tvl"] if d["tvl"] else 0
         lines.append(f"{name}：存款 {fmt_usd(d['tvl'])}，可取 {ratio:.0%}")
+    if "stable" in res:
+        st = res["stable"]
+        lines.append(f"USDC {st['usdc']:.4f} · USDT {st['usdt']:.4f}（美元）")
     if "usde" in errs:
         lines.append("USDe：读取失败")
     elif "usde" in res:
@@ -407,7 +462,7 @@ def main():
              "这是一条测试，用来确认这个级别的通知会不会响铃和弹出。\n" + summary(res, errs), args.dry_run)
     elif args.test or first_run:
         push("info", "盯链机器人已连接" if first_run else "测试推送",
-             "每 10 分钟检查一次 4 个 USDC 池子和 USDe，有异常会推送到这里。\n" + summary(res, errs), args.dry_run)
+             "每 10 分钟检查一次 4 个 USDC 池子、USDC/USDT/USDe 价格和 Compound 提案，有异常会推送到这里。\n" + summary(res, errs), args.dry_run)
 
     alerts = state.setdefault("alerts", {})
     for aid, (lvl, title, body) in active.items():
