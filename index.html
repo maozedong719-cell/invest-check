@@ -62,7 +62,7 @@ h1{font:700 26px/1.2 var(--sans);margin:8px 0 4px;letter-spacing:.01em}
 .ghost:hover{border-color:var(--accent)}
 
 /* ---------- 总览 ---------- */
-.overview{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:22px;border-radius:var(--r-lg);overflow:hidden;
+.overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:22px;border-radius:var(--r-lg);overflow:hidden;
   background:var(--line);border:1px solid var(--line)}
 .ov{background:var(--panel);padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;min-width:0}
 .ov .k{grid-column:2;font:500 11px var(--mono);letter-spacing:.12em;color:var(--mute);text-transform:uppercase}
@@ -72,10 +72,10 @@ a.ov-link:hover{background:var(--panel-2);text-decoration:none}
 a.ov-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .ov .go{grid-column:2;display:inline-flex;align-items:center;gap:2px;font:500 12.5px var(--sans);color:var(--accent);margin-top:2px}
 .ov .go svg{width:14px;height:14px}
-.v-usdc{display:none}
-body.view-usdc .v-usdc{display:block}
-body.view-usdc .v-main{display:none}
-body.view-usdc .overview,body.view-usdc #oTime{display:none}
+.v-usdc,.v-income{display:none}
+body.view-usdc .v-usdc,body.view-income .v-income{display:block}
+body.view-usdc .v-main,body.view-income .v-main{display:none}
+body.view-usdc .overview,body.view-usdc #oTime,body.view-income .overview,body.view-income #oTime{display:none}
 .back{display:inline-flex;align-items:center;gap:4px;font:500 14px var(--sans);color:var(--accent);margin-bottom:14px;padding:6px 10px 6px 4px;border-radius:8px}
 .back:hover{background:var(--panel-2);text-decoration:none}
 .back svg{width:18px;height:18px}
@@ -175,6 +175,9 @@ tr.now .ddb i{background:var(--accent);opacity:1}
 input[type=number]{width:74px;background:var(--inset);border:1px solid var(--line-2);color:var(--text);border-radius:8px;padding:6px 8px;
   font:500 14px var(--mono);font-variant-numeric:tabular-nums}
 input.wide{width:118px}
+input[type=text],select{background:var(--inset);border:1px solid var(--line-2);color:var(--text);border-radius:8px;padding:6px 8px;font:500 14px var(--sans)}
+select{padding:6px 4px}
+input[type=text]:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent)}
 #rules td{vertical-align:middle}
 #rules tr.hit td{background:rgba(255,107,107,.08)}
@@ -226,9 +229,30 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
 .log{font:12px/1.6 var(--mono);color:var(--mute);white-space:pre-wrap;max-height:200px;overflow:auto;margin-top:10px}
 .disclaimer{margin-top:22px;text-align:center;color:var(--faint);font-size:12px}
 
+/* ---------- 被动收入 ---------- */
+.inc-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.inc-card{background:var(--inset);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;min-width:0}
+.inc-card .k{font-size:12.5px;color:var(--mute)}
+.inc-card .big{font:600 30px/1.15 var(--mono);letter-spacing:-.02em;margin-top:6px;color:var(--accent);overflow-wrap:anywhere}
+.inc-card .sm{font:12px var(--mono);color:var(--mute);margin-top:6px}
+.inc-meta{display:flex;flex-wrap:wrap;gap:6px 22px;margin-top:14px;font-size:13px;color:var(--mute)}
+.inc-meta .num{color:var(--text)}
+#incTable input[type=text]{width:100%;min-width:9em}
+#incTable input.amt{width:132px}
+#incTable input.rate{width:70px}
+#incTable td.daily{text-align:right}
+#incTable th.r{text-align:right}
+.del{background:none;border:0;color:var(--faint);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px}
+.del:hover{color:var(--r);background:var(--panel-2)}
+.inc-tools{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.fx{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;font-size:13px;color:var(--mute)}
+.fx label{display:inline-flex;align-items:center;gap:8px}
+.empty{padding:18px 4px;color:var(--mute);font-size:13px}
+
 /* ---------- 响应式 ---------- */
 @media (max-width:980px){
   .gauges,.pools,.vals{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview{grid-template-columns:1fr 1fr}
   .split{grid-template-columns:1fr}
 }
 @media (max-width:600px){
@@ -237,6 +261,21 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
   .top>div{flex:1 1 100%}
   .btn{width:100%;padding:14px;font-size:16px}
   .overview{grid-template-columns:1fr}
+  .inc-sum{grid-template-columns:1fr;gap:8px}
+  .inc-card{padding:13px 14px}
+  .inc-card .big{font-size:26px}
+  /* 手机上每一项改成卡片：名称 + 删除 / 币种 金额 年化 / 每天 */
+  #incTable thead{display:none}
+  #incTable,#incTable tbody{display:block}
+  #incTable tr[data-i]{display:grid;grid-template-columns:96px minmax(0,1fr) 92px;gap:8px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}
+  #incTable tr[data-i] td{padding:0;border:0}
+  #incTable tr[data-i] td:nth-child(1){grid-column:1 / 3}
+  #incTable tr[data-i] td:nth-child(6){grid-column:3;grid-row:1;text-align:right}
+  #incTable tr[data-i] td:nth-child(5){grid-column:1 / -1;text-align:left;color:var(--mute);font-size:13px}
+  #incTable tr[data-i] td:nth-child(5)::before{content:"每天 ";font-family:var(--sans)}
+  #incTable input[type=text],#incTable select,#incTable input.amt{width:100%;min-width:0}
+  #incTable input.rate{width:58px}
+  input[type=text],select{font-size:16px}
   .ov{padding:15px 16px}
   .ov .t{font-size:15.5px}
   .section{margin-top:32px}
@@ -273,6 +312,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
   <div class="overview">
     <div class="ov"><span class="ind" id="sDot"></span><span class="k">美股 · 买入档位</span><span class="t" id="sText">打开页面后会自动检查一次…</span></div>
     <a class="ov ov-link" href="#usdc" aria-label="查看 USDC 四池详情"><span class="ind" id="uDot"></span><span class="k">USDC · 四个池子</span><span class="t" id="uText">打开页面后会自动检查一次…</span><span class="go">查看详情 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>
+    <a class="ov ov-link" href="#income" aria-label="查看被动收入"><span class="ind" id="iDot"></span><span class="k">被动收入 · 每天</span><span class="t" id="iText">还没填写</span><span class="go" id="iGo">填写资产和利率 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>
   </div>
   <div class="meta" id="oTime"></div>
 
@@ -343,11 +383,50 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     </div>
   </section>
 
+  <!-- ================= 被动收入 ================= -->
+  <section class="section v-income" id="income">
+    <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>返回总览</a>
+    <div class="sec-h"><h2>被动收入</h2><span class="eyebrow">Passive income · CNY</span></div>
+
+    <div class="panel">
+      <div class="ph"><h3>折合人民币</h3><span class="aside" id="incFxNote"></span></div>
+      <div class="inc-sum">
+        <div class="inc-card"><div class="k">每天</div><div class="big" id="incDay">—</div><div class="sm" id="incDayUsd"></div></div>
+        <div class="inc-card"><div class="k">每月</div><div class="big" id="incMonth">—</div><div class="sm" id="incMonthUsd"></div></div>
+        <div class="inc-card"><div class="k">每年</div><div class="big" id="incYear">—</div><div class="sm" id="incYearUsd"></div></div>
+      </div>
+      <div class="inc-meta" id="incMeta"></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>资产和年化利率</h3><span class="aside">改完自动保存在这台设备的浏览器里</span></div>
+      <div class="tablewrap"><table id="incTable"></table></div>
+      <div class="inc-tools">
+        <button class="ghost" id="incAdd">＋ 添加一项</button>
+        <button class="ghost" id="incExport">复制数据（换设备用）</button>
+        <button class="ghost" id="incImport">粘贴导入</button>
+      </div>
+      <div class="note" style="margin-top:12px">年化利率填百分比，例如 4.25。没有利息的活期、钱包里闲置的币也可以填进来、利率填 0，方便看本金合计和平均利率。每月 = 每年 ÷ 12，每天 = 每年 ÷ 365，按单利算，不含复利。</div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>汇率</h3><span class="aside" id="incFxSrc"></span></div>
+      <div class="fx">
+        <label>1 美元 = <input type="number" id="fxCny" class="wide" step="0.0001"> 人民币</label>
+        <label>1 美元 = <input type="number" id="fxHkd" class="wide" step="0.0001"> 港币</label>
+        <button class="ghost" id="fxReset">改回实时汇率</button>
+      </div>
+      <div class="note" style="margin-top:10px">默认用实时市场汇率；手动改了就按你填的算（例如统一按 6.7），点"改回实时汇率"恢复。</div>
+    </div>
+  </section>
+
   <details class="foot">
     <summary>数据来源与计算方法</summary>
     <div class="body">
       <h4>美股</h4>
       数据来自 CNN 恐惧与贪婪指数接口（含标普 500 收盘价和 VIX），交易时段内会延迟更新，收盘后为当天最终值。回撤 = 标普 500 现价相对"标普前高"的跌幅（规则里可改，创新高时自动上调），不受一年窗口限制。VOO 和标普 500 的回撤几乎一致，VOO 触发价按"VOO 最高价 ×（1 − 回撤）"换算，现价也是估算，下单前以券商报价为准。默认档位只是示例，改完自动保存；"已执行"打勾后这一档不再提醒。定投资金不在这张表里。
+      <h4>被动收入</h4>
+      资产、利率都是你自己填的，只保存在这台设备的浏览器里，不会上传，也不在公开网页的代码里；电脑和手机各存各的，可以用"复制数据"和"粘贴导入"同步。实时汇率来自 open.er-api.com（每小时更新）。
       <h4>USDC</h4>
       数据实时来自以太坊链上合约（经公共节点读取）和 Morpho 官方 API。Aave / Compound 的 APY 是链上当前利率换算的，不含奖励代币。30 天平均：Morpho 两个金库按份额价格 30 天的实际涨幅折算年化（已扣管理费，就是你实际拿到的）；Aave / Compound 用 DefiLlama 记录的每日存款利率取 30 天均值。排序和利差判断都以 30 天平均为准，"当天"只作参考。本页只看数字，查不到黑客攻击、协议公告这类新闻。TVL 的"较上次"是和这台设备上一次打开本页时比较。
     </div>
@@ -1045,6 +1124,137 @@ const Usdc = (() => {
   return { run };
 })();
 
+/* =====================================================================
+   被动收入：资产 × 年化利率，折合人民币的每天 / 每月 / 每年
+   数据只存在本机浏览器（localStorage），公开网页里不写任何金额
+   ===================================================================== */
+const Income = (() => {
+  const LS = 'income_items_v1', FX_LS = 'income_fx_v1';
+  const CUR = {USD:'美元', CNY:'人民币', HKD:'港币', USDC:'USDC'};
+  const $ = id => document.getElementById(id);
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const money = (n, d=0) => n==null||!isFinite(n) ? '—' : n.toLocaleString('zh-CN',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const load = (k, dflt) => { try{ const v = JSON.parse(localStorage.getItem(k)); return v ?? dflt; }catch(e){ return dflt; } };
+  const save = (k, v) => { try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} };
+
+  let items = load(LS, []);
+  if(!Array.isArray(items)) items = [];
+  let fxManual = load(FX_LS, {});          // {cny, hkd}：手动填的汇率，空就用实时
+  let fxLive = {cny: 6.68, hkd: 7.8, time: null, ok: false};
+  const fx = () => ({cny: +fxManual.cny || fxLive.cny, hkd: +fxManual.hkd || fxLive.hkd});
+  const toUsd = (amt, cur) => cur==='CNY' ? amt / fx().cny : cur==='HKD' ? amt / fx().hkd : amt;   // USD 和 USDC 按 1:1
+
+  function totals(){
+    let principal = 0, yearUsd = 0;
+    items.forEach(it => {
+      const usd = toUsd(+it.amt || 0, it.cur);
+      principal += usd; yearUsd += usd * (+it.rate || 0) / 100;
+    });
+    return {principal, yearUsd, rate: principal ? yearUsd / principal * 100 : 0};
+  }
+
+  function renderSummary(){
+    const t = totals(), r = fx().cny;
+    const has = items.some(it => +it.amt > 0);
+    $('incDay').textContent = has ? '¥' + money(t.yearUsd * r / 365) : '—';
+    $('incMonth').textContent = has ? '¥' + money(t.yearUsd * r / 12) : '—';
+    $('incYear').textContent = has ? '¥' + money(t.yearUsd * r) : '—';
+    $('incDayUsd').textContent = has ? '≈ $' + money(t.yearUsd / 365) : '';
+    $('incMonthUsd').textContent = has ? '≈ $' + money(t.yearUsd / 12) : '';
+    $('incYearUsd').textContent = has ? '≈ $' + money(t.yearUsd) : '';
+    $('incMeta').innerHTML = has
+      ? `<span>本金合计 <span class="num">¥${money(t.principal * r)}</span>（≈ $${money(t.principal)}）</span><span>加权平均年化 <span class="num">${t.rate.toFixed(2)}%</span></span><span>共 <span class="num">${items.length}</span> 项</span>`
+      : '<span>还没有填写资产，点下面的"＋ 添加一项"开始。</span>';
+    $('incFxNote').textContent = `按 1 美元 = ${fx().cny.toFixed(4)} 人民币`;
+    // 总览卡片
+    $('iText').textContent = has ? `¥${money(t.yearUsd * r / 365)} / 天 · ¥${money(t.yearUsd * r / 12)} / 月` : '还没填写';
+    $('iGo').firstChild.textContent = has ? '查看明细 ' : '填写资产和利率 ';
+    $('iDot').style.setProperty('--c', COL[has ? 'g' : 'x']);
+  }
+
+  function rowHtml(it, i){
+    const usd = toUsd(+it.amt || 0, it.cur), daily = usd * (+it.rate || 0) / 100 / 365 * fx().cny;
+    return `<tr data-i="${i}">
+      <td><input type="text" data-k="name" value="${esc(it.name || '')}" placeholder="例如 Aave USDC"></td>
+      <td><select data-k="cur">${Object.keys(CUR).map(c => `<option value="${c}"${c===it.cur?' selected':''}>${CUR[c]}</option>`).join('')}</select></td>
+      <td><input type="number" class="amt" data-k="amt" value="${it.amt ?? ''}" min="0" step="any" inputmode="decimal" placeholder="金额"></td>
+      <td><input type="number" class="rate" data-k="rate" value="${it.rate ?? ''}" min="0" step="any" inputmode="decimal" placeholder="0"> %</td>
+      <td class="n daily">¥${money(daily, daily < 100 ? 2 : 0)}</td>
+      <td><button class="del" data-del="${i}" aria-label="删除这一项">✕</button></td></tr>`;
+  }
+  function renderTable(){
+    $('incTable').innerHTML = '<thead><tr><th>项目</th><th>币种</th><th>金额</th><th>年化</th><th class="r">每天（元）</th><th></th></tr></thead><tbody>' +
+      (items.length ? items.map(rowHtml).join('') : '<tr><td colspan="6" class="empty">还没有项目。</td></tr>') + '</tbody>';
+  }
+  function renderAll(){ renderTable(); renderSummary(); renderFx(); }
+  function renderFx(){
+    $('fxCny').value = fxManual.cny || fxLive.cny.toFixed(4);
+    $('fxHkd').value = fxManual.hkd || fxLive.hkd.toFixed(4);
+    const manual = fxManual.cny || fxManual.hkd;
+    $('incFxSrc').textContent = manual ? '手动汇率' : fxLive.ok ? '实时汇率 · ' + fxLive.time : '实时汇率读取失败，暂用默认值';
+  }
+
+  // 输入时只更新那一行的"每天"和汇总，不重画表格（不打断输入）
+  const onEdit = e => {
+    const tr = e.target.closest('tr[data-i]'), k = e.target.dataset.k; if(!tr || !k) return;
+    const it = items[+tr.dataset.i];
+    it[k] = (k==='amt' || k==='rate') ? (e.target.value === '' ? null : parseFloat(e.target.value)) : e.target.value;
+    save(LS, items);
+    const usd = toUsd(+it.amt || 0, it.cur), daily = usd * (+it.rate || 0) / 100 / 365 * fx().cny;
+    tr.querySelector('.daily').textContent = '¥' + money(daily, daily < 100 ? 2 : 0);
+    renderSummary();
+  };
+  $('incTable').addEventListener('input', onEdit);
+  $('incTable').addEventListener('change', onEdit);   // 币种下拉框在部分浏览器只触发 change
+  $('incTable').addEventListener('click', e => {
+    const b = e.target.closest('[data-del]'); if(!b) return;
+    const it = items[+b.dataset.del];
+    if(+it.amt > 0 && !confirm(`删除"${it.name || '这一项'}"？`)) return;
+    items.splice(+b.dataset.del, 1); save(LS, items); renderAll();
+  });
+  $('incAdd').onclick = () => {
+    items.push({name:'', cur:'USD', amt:null, rate:null}); save(LS, items); renderAll();
+    const ins = $('incTable').querySelectorAll('input[data-k="name"]'); ins[ins.length-1]?.focus();
+  };
+  $('incExport').onclick = async () => {
+    const text = JSON.stringify({items, fx: fxManual});
+    try{ await navigator.clipboard.writeText(text); alert('已复制。到另一台设备打开本页，点"粘贴导入"。\n注意：里面有你的资产金额，不要发到公开的地方。'); }
+    catch(e){ prompt('复制下面这段文字：', text); }
+  };
+  $('incImport').onclick = () => {
+    const text = prompt('粘贴从另一台设备复制的数据（会覆盖这台设备上现有的被动收入数据）：'); if(!text) return;
+    try{
+      const d = JSON.parse(text);
+      if(!Array.isArray(d.items)) throw new Error('格式不对');
+      items = d.items.map(x => ({name: String(x.name||''), cur: CUR[x.cur] ? x.cur : 'USD', amt: x.amt==null ? null : +x.amt, rate: x.rate==null ? null : +x.rate}));
+      fxManual = d.fx && typeof d.fx === 'object' ? {cny: +d.fx.cny || undefined, hkd: +d.fx.hkd || undefined} : {};
+      save(LS, items); save(FX_LS, fxManual); renderAll();
+    }catch(e){ alert('导入失败：' + e.message); }
+  };
+  ['fxCny','fxHkd'].forEach(id => $(id).addEventListener('change', e => {
+    const v = parseFloat(e.target.value), k = id==='fxCny' ? 'cny' : 'hkd';
+    const live = fxLive[k];
+    fxManual[k] = v > 0 && Math.abs(v - live) > 1e-6 ? v : undefined;
+    save(FX_LS, fxManual); renderAll();
+  }));
+  $('fxReset').onclick = () => { fxManual = {}; save(FX_LS, fxManual); renderAll(); };
+
+  async function loadFx(){
+    try{
+      const r = await withTimeout(fetch('https://open.er-api.com/v6/latest/USD'), 10000);
+      const j = await r.json();
+      if(j.rates && j.rates.CNY && j.rates.HKD){
+        fxLive = {cny: j.rates.CNY, hkd: j.rates.HKD, ok: true,
+                  time: new Date(j.time_last_update_unix * 1000).toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})};
+      }
+    }catch(e){ log('汇率读取失败：' + e.message); }
+    renderAll();
+  }
+  renderAll();
+  loadFx();
+  return {};
+})();
+
 /* ================= 主流程 ================= */
 async function runAll(){
   const btn=document.getElementById('run'), lbl=btn.querySelector('span');
@@ -1058,8 +1268,8 @@ async function runAll(){
 }
 document.getElementById('run').onclick=runAll;
 function route(){
-  const usdc = location.hash === '#usdc';
-  document.body.classList.toggle('view-usdc', usdc);
+  document.body.classList.toggle('view-usdc', location.hash === '#usdc');
+  document.body.classList.toggle('view-income', location.hash === '#income');
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
