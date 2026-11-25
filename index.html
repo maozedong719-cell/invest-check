@@ -62,7 +62,7 @@ h1{font:700 26px/1.2 var(--sans);margin:8px 0 4px;letter-spacing:.01em}
 .ghost:hover{border-color:var(--accent)}
 
 /* ---------- 总览 ---------- */
-.overview{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin-top:22px;border-radius:var(--r-lg);overflow:hidden;
+.overview{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin-top:22px;border-radius:var(--r-lg);overflow:hidden;
   background:var(--line);border:1px solid var(--line)}
 .ov{background:var(--panel);padding:18px 20px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;min-width:0}
 .ov .k{grid-column:2;font:500 11px var(--mono);letter-spacing:.12em;color:var(--mute);text-transform:uppercase}
@@ -72,10 +72,10 @@ a.ov-link:hover{background:var(--panel-2);text-decoration:none}
 a.ov-link:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .ov .go{grid-column:2;display:inline-flex;align-items:center;gap:2px;font:500 12.5px var(--sans);color:var(--accent);margin-top:2px}
 .ov .go svg{width:14px;height:14px}
-.v-usdc,.v-income{display:none}
-body.view-usdc .v-usdc,body.view-income .v-income{display:block}
-body.view-usdc .v-main,body.view-income .v-main{display:none}
-body.view-usdc .overview,body.view-usdc #oTime,body.view-income .overview,body.view-income #oTime{display:none}
+.v-usdc,.v-income,.v-btc{display:none}
+body.view-usdc .v-usdc,body.view-income .v-income,body.view-btc .v-btc{display:block}
+body.view-usdc .v-main,body.view-income .v-main,body.view-btc .v-main{display:none}
+body.sub .overview,body.sub #oTime{display:none}
 .back{display:inline-flex;align-items:center;gap:4px;font:500 14px var(--sans);color:var(--accent);margin-bottom:14px;padding:6px 10px 6px 4px;border-radius:8px}
 .back:hover{background:var(--panel-2);text-decoration:none}
 .back svg{width:18px;height:18px}
@@ -229,6 +229,15 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
 .log{font:12px/1.6 var(--mono);color:var(--mute);white-space:pre-wrap;max-height:200px;overflow:auto;margin-top:10px}
 .disclaimer{margin-top:22px;text-align:center;color:var(--faint);font-size:12px}
 
+/* ---------- 比特币分档 ---------- */
+.gauges.two{grid-template-columns:repeat(2,minmax(0,1fr));max-width:760px}
+#bRules td{vertical-align:middle}
+#bRules tr.hit td{background:rgba(255,107,107,.08)}
+#bRules tr.done td{opacity:.5}
+#bHist td,#bHist th{padding:7px 8px;font-size:12.5px;white-space:nowrap}
+#bHist tr.now td{background:rgba(111,211,255,.08);color:var(--text);font-weight:600}
+#bHist tr.now td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+
 /* ---------- 被动收入 ---------- */
 .inc-sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .inc-card{background:var(--inset);border:1px solid var(--line);border-radius:var(--r-md);padding:16px;min-width:0}
@@ -252,6 +261,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
 /* ---------- 响应式 ---------- */
 @media (max-width:980px){
   .gauges,.pools,.vals{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview{grid-template-columns:1fr 1fr}
   .split{grid-template-columns:1fr}
 }
 @media (max-width:600px){
@@ -303,7 +313,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     <div>
       <div class="eyebrow">Equity panic · USDC pools</div>
       <h1>投资一键检查</h1>
-      <div class="sub">标普 500 回撤 · VIX · 恐惧与贪婪　＋　Morpho ×2 · Aave V3 · Compound V3</div>
+      <div class="sub">标普 500 回撤 · VIX · 恐惧与贪婪　＋　Morpho ×2 · Aave V3 · Compound V3　＋　比特币分档</div>
     </div>
     <button class="btn" id="run"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg><span>立即检查</span></button>
   </header>
@@ -311,6 +321,7 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
   <div class="overview">
     <div class="ov"><span class="ind" id="sDot"></span><span class="k">美股 · 买入档位</span><span class="t" id="sText">打开页面后会自动检查一次…</span></div>
     <a class="ov ov-link" href="#usdc" aria-label="查看 USDC 四池详情"><span class="ind" id="uDot"></span><span class="k">USDC · 四个池子</span><span class="t" id="uText">打开页面后会自动检查一次…</span><span class="go">查看详情 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>
+    <a class="ov ov-link" href="#btc" aria-label="查看比特币分档买入"><span class="ind" id="bDot"></span><span class="k">比特币 · 买入档位</span><span class="t" id="bText">打开页面后会自动检查一次…</span><span class="go">查看详情 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a>
   </div>
   <div class="meta" id="oTime"></div>
 
@@ -381,6 +392,43 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     </div>
   </section>
 
+  <!-- ================= 比特币分档 ================= -->
+  <section class="section v-btc" id="btc">
+    <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>返回总览</a>
+    <div class="sec-h"><h2>比特币分档买入</h2><span class="eyebrow">BTC · Crypto Fear &amp; Greed</span></div>
+
+    <div class="panel">
+      <div class="ph"><h3>恐慌温度计</h3><span class="aside">回撤仪表上的刻度是你的买入档位</span></div>
+      <div class="gauges two" id="bMetrics"><div class="note">检查中…</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>历史对照 · 比特币历次大跌</h3></div>
+      <div class="tablewrap" id="bHist"></div>
+      <div class="note" style="margin-top:8px">价格按盘中最高、最低点；"收复"指从最低点涨回前高的用时。加密恐惧贪婪指数（Alternative.me）从 2018 年 2 月才有，之前标"—"；表里的恐惧贪婪由接口实时计算。2020 年新冠闪崩是牛市中途的急跌，不是周期熊市，放在这里对照恐慌的深度。</div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>分档买入规则</h3><span class="aside">可直接修改，自动保存在这台设备的浏览器里</span></div>
+      <div class="params">
+        <label>弹药总额 <input type="number" id="bAmmo" class="wide"> 美元</label>
+        <label>本轮高点 <input type="number" id="bPeak" class="wide" step="1"></label>
+        <label><input type="checkbox" id="bNeedFear"> 前两档需恐慌确认（加密恐惧贪婪 ≤ <input type="number" id="bFearMax" step="1" min="0" max="50" style="width:52px">）</label>
+      </div>
+      <div id="bLadder"></div>
+      <div class="tablewrap"><div id="bRules"></div></div>
+      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="ghost" id="bAddTier">＋ 加一档</button>
+        <button class="ghost" id="bResetCfg">恢复默认档位</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="ph"><h3>今天的结论</h3></div>
+      <div id="bAdvice" class="note">检查完成后显示。</div>
+    </div>
+  </section>
+
   <!-- ================= 被动收入 ================= -->
   <section class="section v-income" id="income">
     <a class="back" href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>返回总览</a>
@@ -423,6 +471,8 @@ details.foot .body h4{margin:12px 0 4px;color:var(--text);font-size:13px}
     <div class="body">
       <h4>美股</h4>
       数据来自 CNN 恐惧与贪婪指数接口（含标普 500 收盘价和 VIX），交易时段内会延迟更新，收盘后为当天最终值。回撤 = 标普 500 现价相对"标普前高"的跌幅（规则里可改，创新高时自动上调），不受一年窗口限制。VOO 和标普 500 的回撤几乎一致，VOO 触发价按"VOO 最高价 ×（1 − 回撤）"换算，现价也是估算，下单前以券商报价为准。默认档位只是示例，改完自动保存；"已执行"打勾后这一档不再提醒。定投资金不在这张表里。
+      <h4>比特币</h4>
+      BTC 价格来自 CoinGecko（约 1 分钟更新），恐惧贪婪指数来自 Alternative.me（每天更新一次）。回撤 = 现价相对"本轮高点"的跌幅；本轮高点默认 126,198 美元（2025-10-06），创新高时自动上调。档位按跌幅设定，触发价 = 本轮高点 ×（1 − 跌幅）。默认档位只是示例，改完自动保存；"已执行"打勾后这一档不再提醒。
       <h4>被动收入</h4>
       资产、利率都是你自己填的，只保存在这台设备的浏览器里，不会上传，也不在公开网页的代码里；电脑和手机各存各的，可以用"复制数据"和"粘贴导入"同步。实时汇率来自 open.er-api.com（每小时更新）。
       <h4>USDC</h4>
@@ -1127,6 +1177,186 @@ const Usdc = (() => {
 })();
 
 /* =====================================================================
+   比特币分档买入：价格（CoinGecko）+ 加密恐惧贪婪（Alternative.me）
+   ===================================================================== */
+const Btc = (() => {
+  const DEFAULT_CFG = {
+    ammo: 0,          // BTC 分档弹药总额（美元）
+    peak: 126198,           // 本轮最高价（2025-10-06 盘中），回撤以它为准
+    peakDate: '2025-10-06',
+    cycleLow: 55501,        // 本轮至今最低（2026-11-21 盘中），之后跌破会自动更新
+    needFear: true, fearMax: 20,
+    tiers: [ {dd:60,pct:20,done:false}, {dd:65,pct:20,done:false}, {dd:70,pct:20,done:false}, {dd:75,pct:20,done:false}, {dd:80,pct:20,done:false} ]
+  };
+  const LS = 'btc_rules_v1';
+  const $ = id => document.getElementById(id);
+  const fmt = (n, d=0) => n==null||isNaN(n) ? '—' : n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+  const pct = (x, d=1) => x==null||isNaN(x) ? '—' : (x*100).toFixed(d) + '%';
+  const N = s => `<span class="num">${s}</span>`;
+  let cfg = (() => { try{ const c = JSON.parse(localStorage.getItem(LS)); if(c && Array.isArray(c.tiers)) return Object.assign(JSON.parse(JSON.stringify(DEFAULT_CFG)), c); }catch(e){} return JSON.parse(JSON.stringify(DEFAULT_CFG)); })();
+  const save = () => { try{ localStorage.setItem(LS, JSON.stringify(cfg)); }catch(e){} };
+  let last = null;
+
+  const ddLevel = d => d==null ? ['x','未取到'] : d>=0.70 ? ['r','深度熊市'] : d>=0.50 ? ['r','熊市'] : d>=0.30 ? ['o','大幅回调'] : d>=0.15 ? ['y','回调'] : ['g','正常'];
+  const fgLevel = v => v==null ? ['x','未取到'] : v<25 ? ['r','极度恐惧'] : v<45 ? ['o','恐惧'] : v<=55 ? ['y','中性'] : v<=75 ? ['g','贪婪'] : ['g','极度贪婪'];
+
+  // 历次大跌（盘中高低点）；fgFrom/fgTo 是该段在恐惧贪婪历史里取最低值、见底当天值用的日期
+  const HIST = [
+    {name:'2013–15 熊市', when:'2013.11–2015.01', hi:1163, lo:152, dur:'约 13.5 个月', rec:'约 25 个月'},
+    {name:'2017–18 熊市', when:'2017.12–2018.12', hi:19783, lo:3122, dur:'约 12 个月', rec:'约 24 个月', fgFrom:'2018-02-01', fgTo:'2018-12-31', fgDay:'2018-12-15'},
+    {name:'2020 新冠闪崩', when:'2020.02–2020.03', hi:10500, lo:3850, dur:'约 1 个月', rec:'约 2 个月', fgFrom:'2020-02-13', fgTo:'2020-03-31', fgDay:'2020-03-13'},
+    {name:'2021–22 熊市', when:'2021.11–2022.11', hi:69000, lo:15476, dur:'约 12.5 个月', rec:'约 16 个月', fgFrom:'2021-11-10', fgTo:'2022-11-30', fgDay:'2022-11-21'}
+  ];
+
+  async function fetchData(){
+    const [p, f] = await Promise.all([
+      withTimeout(fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true'), 15000).then(r => { if(!r.ok) throw new Error('CoinGecko ' + r.status); return r.json(); }),
+      withTimeout(fetch('https://api.alternative.me/fng/?limit=0'), 15000).then(r => { if(!r.ok) throw new Error('恐惧贪婪 ' + r.status); return r.json(); })
+    ]);
+    const price = p.bitcoin.usd;
+    const fg = f.data.map(x => ({v: +x.value, day: new Date(+x.timestamp*1000).toISOString().slice(0,10)}));   // 新的在前
+    const byDay = Object.fromEntries(fg.map(x => [x.day, x.v]));
+    const minIn = (a, b) => { const xs = fg.filter(x => x.day >= a && x.day <= b); return xs.length ? xs.reduce((m,x) => x.v < m.v ? x : m) : null; };
+    if(price > cfg.peak){ cfg.peak = Math.round(price); cfg.peakDate = new Date().toISOString().slice(0,10); cfg.cycleLow = cfg.peak; save(); }   // 创新高：开始新一轮
+    if(price < cfg.cycleLow){ cfg.cycleLow = Math.round(price); save(); }
+    return {
+      price, chg: p.bitcoin.usd_24h_change, time: new Date(p.bitcoin.last_updated_at*1000),
+      dd: 1 - price / cfg.peak,
+      fg: fg[0].v, fgYest: fg[1]?.v, fgWeek: fg[7]?.v, fgMonth: fg[30]?.v,
+      fgMin1y: Math.min(...fg.slice(0,365).map(x=>x.v)),
+      fgMinEp: minIn(cfg.peakDate, '9999'),
+      hist: HIST.map(h => Object.assign({}, h, {fgMin: h.fgFrom ? minIn(h.fgFrom, h.fgTo) : null, fgBottom: h.fgDay ? byDay[h.fgDay] : null}))
+    };
+  }
+
+  function fearOk(d){ return d && d.fg != null && d.fg <= cfg.fearMax; }
+  function tierStatus(t, i, d){
+    if(t.done) return {cls:'done', k:'g', text:'已执行'};
+    if(!d) return {cls:'', k:'x', text:'—'};
+    const hit = d.dd*100 >= t.dd, needF = i < 2 && cfg.needFear;
+    if(hit && (!needF || fearOk(d))) return {cls:'hit', k:'r', text:'已触发 · 待执行', hit:true};
+    if(hit && needF) return {cls:'wait', k:'y', text:'价格已到 · 等恐慌确认'};
+    return {cls:'', k:'x', text:`还差 ${pct(1 - (1 - t.dd/100) / (1 - d.dd))}`};
+  }
+  const gcard = (title, svg, lvl, lines) => `<div class="gcard"><div class="k"><span>${title}</span></div>${svg}${pillH(lvl[0], lvl[1])}</div><div class="lines">${lines.map(l=>`<div>${l}</div>`).join('')}</div></div>`;
+
+  function renderMetrics(d){
+    const L = ddLevel(d.dd), F = fgLevel(d.fg);
+    $('bMetrics').innerHTML =
+      gcard('从本轮高点回撤', gauge(d.dd*100, 0, 90,
+          [{from:0,to:15,k:'g'},{from:15,to:30,k:'y'},{from:30,to:50,k:'o'},{from:50,to:90,k:'r'}],
+          [...cfg.tiers.map(t => ({v:t.dd})), {v:0,l:0},{v:45,l:45},{v:90,l:90}], L[0], '-' + (d.dd*100).toFixed(1) + '%'), L,
+        [`现价 ${N('$'+fmt(d.price))} · 24 小时 ${N((d.chg>=0?'+':'')+fmt(d.chg,1)+'%')}`, `本轮高点 ${N('$'+fmt(cfg.peak))} · ${N(cfg.peakDate)}`, `本轮最低 ${N('$'+fmt(cfg.cycleLow))}（-${(100*(1-cfg.cycleLow/cfg.peak)).toFixed(1)}%）`]) +
+      gcard('加密恐惧贪婪', gauge(d.fg, 0, 100,
+          [{from:0,to:25,k:'r'},{from:25,to:45,k:'o'},{from:45,to:55,k:'y'},{from:55,to:100,k:'g'}],
+          [{v:0,l:0},{v:cfg.fearMax},{v:25,l:25},{v:50,l:50},{v:75},{v:100,l:100}], F[0], fmt(d.fg)), F,
+        [`昨 ${N(fmt(d.fgYest))} · 周 ${N(fmt(d.fgWeek))} · 月 ${N(fmt(d.fgMonth))}`, `本轮最低 ${N(fmt(d.fgMinEp?.v))}（${d.fgMinEp?.day || '—'}）`, '0 最恐惧 · 100 最贪婪']);
+  }
+
+  function renderHist(d){
+    const bar = v => `<span class="ddb"><i style="width:${Math.min(100, v/90*100).toFixed(0)}%"></i></span>`;
+    let h = '<table><thead><tr><th>事件</th><th>期间</th><th>高点</th><th>最低</th><th>最大跌幅</th><th>高点到最低</th><th>F&amp;G 最低</th><th>见底 F&amp;G</th><th>收复</th></tr></thead><tbody>';
+    (d ? d.hist : HIST).forEach(e => {
+      const dd = (1 - e.lo/e.hi)*100;
+      h += `<tr><td>${e.name}</td><td class="n">${e.when}</td><td class="n">$${fmt(e.hi)}</td><td class="n">$${fmt(e.lo)}</td><td class="n">${bar(dd)}-${dd.toFixed(1)}%</td><td class="n">${e.dur}</td><td class="n">${e.fgMin ? e.fgMin.v + '（' + e.fgMin.day.slice(0,7) + '）' : '—'}</td><td class="n">${e.fgBottom ?? '—'}</td><td class="n">${e.rec}</td></tr>`;
+    });
+    if(d){
+      const lowDd = (1 - cfg.cycleLow/cfg.peak)*100, months = ((Date.now() - Date.parse(cfg.peakDate)) / 864e5 / 30.44).toFixed(1);
+      h += `<tr class="now"><td>现在</td><td class="n">${cfg.peakDate.slice(0,7).replace('-','.')}–</td><td class="n">$${fmt(cfg.peak)}</td><td class="n">$${fmt(cfg.cycleLow)}</td><td class="n">${bar(lowDd)}-${lowDd.toFixed(1)}%（今 -${(d.dd*100).toFixed(1)}%）</td><td class="n">已 ${months} 个月</td><td class="n">${d.fgMinEp ? d.fgMinEp.v + '（' + d.fgMinEp.day.slice(0,7) + '）' : '—'}</td><td class="n">${d.fg} 今</td><td class="n">进行中</td></tr>`;
+    }
+    $('bHist').innerHTML = h + '</tbody></table>';
+  }
+
+  function renderLadder(){
+    // 标尺从"现价回撤和第 1 档中较小者再往前 15%"开始，档位都挤在 60%~80% 时也不会在手机上重叠
+    const d = last, max = Math.max(90, ...cfg.tiers.map(t => t.dd + 5));
+    const lo = Math.max(0, Math.floor((Math.min(cfg.tiers[0]?.dd ?? 50, d ? d.dd*100 : 50) - 15) / 5) * 5);
+    const x = v => Math.max(0, Math.min(100, (v - lo) / (max - lo) * 100));
+    let h = `<div class="ladder"><div class="lt">`;
+    if(d) h += `<div class="lf" style="width:${x(d.dd*100).toFixed(2)}%"></div>`;
+    cfg.tiers.forEach((t,i) => { const st = tierStatus(t, i, d); h += `<div class="lm ${st.cls}" style="left:${x(t.dd).toFixed(2)}%"><b>${i+1}</b><span>${t.dd}%</span></div>`; });
+    if(d) h += `<div class="ln" style="left:${x(d.dd*100).toFixed(2)}%"><span>现在 ${(d.dd*100).toFixed(1)}%</span></div>`;
+    $('bLadder').innerHTML = h + `</div></div>`;
+  }
+
+  function renderRules(){
+    const d = last; let tot = 0;
+    let h = `<table><thead><tr><th>档位</th><th>从高点跌 ≥</th><th>BTC 触发价</th><th>投入比例</th><th>投入金额</th><th>约买 BTC</th><th>状态</th><th>已执行</th><th></th></tr></thead><tbody>`;
+    cfg.tiers.forEach((t, i) => {
+      tot += +t.pct || 0;
+      const price = cfg.peak * (1 - t.dd/100), amt = cfg.ammo * (t.pct/100), st = tierStatus(t, i, d);
+      h += `<tr class="${st.cls}"><td style="white-space:nowrap"><b>第 ${i+1} 档</b>${i<2&&cfg.needFear?'<div class="note">需恐慌确认</div>':''}</td>
+        <td class="n"><input type="number" step="1" min="1" max="95" data-i="${i}" data-k="dd" value="${t.dd}"> %</td>
+        <td class="n">$${fmt(price)}</td>
+        <td class="n"><input type="number" step="1" min="0" max="100" data-i="${i}" data-k="pct" value="${t.pct}"> %</td>
+        <td class="n">$${fmt(amt)}</td>
+        <td class="n">${fmt(amt/price, 3)} 枚</td>
+        <td>${pillH(st.k, st.text)}</td>
+        <td><input type="checkbox" data-i="${i}" data-k="done" ${t.done?'checked':''}></td>
+        <td><button class="ghost" data-del="${i}" title="删除这一档" aria-label="删除第 ${i+1} 档">✕</button></td></tr>`;
+    });
+    h += `</tbody></table>`;
+    if(Math.round(tot) !== 100) h += `<div class="warnline">各档比例合计 ${tot}%，不是 100%。</div>`;
+    if(!cfg.ammo) h += `<div class="warnline">还没填弹药总额，投入金额会显示为 0。</div>`;
+    $('bRules').innerHTML = h;
+    renderLadder();
+  }
+
+  function renderAdvice(d){
+    const L = [], hits = cfg.tiers.map((t,i) => ({t,i,st:tierStatus(t,i,d)})).filter(x => x.st.hit);
+    let lv = 'g', head;
+    if(hits.length){
+      lv = 'r';
+      const amt = hits.reduce((a,x) => a + cfg.ammo*x.t.pct/100, 0);
+      head = `按你的规则，${hits.map(x => '第 '+(x.i+1)+' 档').join('、')} 已触发`;
+      L.push({k:'r', h:`<b>${head}：合计约 $${fmt(amt)}，按现价约 ${fmt(amt/d.price,3)} 枚 BTC。</b>建议在交易所买原生 BTC 后提到硬件钱包；执行后在表里勾选"已执行"。`});
+    } else if(fearOk(d) && d.dd >= 0.5){ lv = 'o'; head = '比特币处在熊市、情绪极度恐惧，但还没到你的买入档位'; }
+    else if(d.dd >= 0.3){ lv = 'y'; head = '比特币在大幅回调，还没到你的买入档位'; }
+    else head = '比特币离买入档位还远，继续等待';
+    const next = cfg.tiers.map((t,i) => ({t,i})).find(x => !x.t.done && d.dd*100 < x.t.dd);
+    if(next) L.push({k:'i', h:`下一档是第 ${next.i+1} 档：BTC 再跌 <b class="num">${pct(1 - (1 - next.t.dd/100)/(1 - d.dd))}</b>，到 <b class="num">$${fmt(cfg.peak*(1-next.t.dd/100))}</b>。`});
+    L.push({k: fearOk(d)?'o':'y', h:`恐慌信号：加密恐惧贪婪 <span class="num">${fmt(d.fg)}</span>（${fgLevel(d.fg)[1]}），本轮最低 <span class="num">${fmt(d.fgMinEp?.v)}</span> · 回撤 <span class="num">${pct(d.dd)}</span>。${cfg.needFear ? (fearOk(d) ? '<b>前两档的恐慌确认条件已满足。</b>' : `前两档的恐慌确认未满足（需要 ≤ ${cfg.fearMax}）。`) : ''}`});
+    L.push({k:'n', h:'比特币前两轮熊市都在高点后约 12 个月见底，跌幅一轮比一轮浅（-84%、-77%）。规则是你冷静时定的，触发了就按规则执行，不必再猜底。'});
+    $('bAdvice').innerHTML = items(L);
+    setStatus('bDot','bText', lv, head + (next && !hits.length ? `，下一档还差 ${pct(1 - (1 - next.t.dd/100)/(1 - d.dd))}` : ''));
+  }
+
+  function renderAll(){
+    $('bAmmo').value = cfg.ammo; $('bPeak').value = cfg.peak; $('bNeedFear').checked = !!cfg.needFear; $('bFearMax').value = cfg.fearMax;
+    renderRules();
+    if(last){ last.dd = 1 - last.price / cfg.peak; renderMetrics(last); renderAdvice(last); }
+    renderHist(last);
+  }
+
+  $('bRules').addEventListener('change', e => {
+    const el = e.target, i = +el.dataset.i, k = el.dataset.k; if(isNaN(i) || !k) return;
+    cfg.tiers[i][k] = k==='done' ? el.checked : (parseFloat(el.value) || 0);
+    if(k==='dd') cfg.tiers.sort((a,b) => a.dd - b.dd);
+    save(); renderAll();
+  });
+  $('bRules').addEventListener('click', e => { const b = e.target.closest('[data-del]'); if(!b) return; cfg.tiers.splice(+b.dataset.del, 1); save(); renderAll(); });
+  $('bAmmo').addEventListener('change', e => { cfg.ammo = parseFloat(e.target.value) || 0; save(); renderAll(); });
+  $('bPeak').addEventListener('change', e => { const v = parseFloat(e.target.value); if(v > 0){ cfg.peak = v; save(); renderAll(); } });
+  $('bNeedFear').addEventListener('change', e => { cfg.needFear = e.target.checked; save(); renderAll(); });
+  $('bFearMax').addEventListener('change', e => { cfg.fearMax = parseFloat(e.target.value) || 0; save(); renderAll(); });
+  $('bAddTier').onclick = () => { const l = cfg.tiers.length ? cfg.tiers[cfg.tiers.length-1].dd : 55; cfg.tiers.push({dd:Math.min(95, l+5), pct:0, done:false}); save(); renderAll(); };
+  $('bResetCfg').onclick = () => { if(confirm('恢复默认档位？你改过的档位和"已执行"勾选都会清掉（弹药总额保留）。')){ const a = cfg.ammo; cfg = JSON.parse(JSON.stringify(DEFAULT_CFG)); cfg.ammo = a; save(); renderAll(); } };
+
+  async function run(){
+    setStatus('bDot','bText','x','正在读取比特币数据…');
+    try{
+      last = await fetchData(); renderAll();
+      log(`比特币：$${fmt(last.price)}，回撤 ${pct(last.dd)}，加密恐惧贪婪 ${last.fg}`);
+    }catch(e){
+      log('比特币数据出错：' + e.message);
+      setStatus('bDot','bText','x','比特币数据读取失败，请稍后再点一次「立即检查」');
+    }
+  }
+  renderAll();
+  return { run };
+})();
+
+/* =====================================================================
    被动收入：资产 × 年化利率，折合人民币的每天 / 每月 / 每年
    数据只存在本机浏览器（localStorage），公开网页里不写任何金额
    ===================================================================== */
@@ -1258,16 +1488,19 @@ async function runAll(){
   const btn=document.getElementById('run'), lbl=btn.querySelector('span');
   btn.disabled=true; lbl.textContent='检查中…';
   log('开始检查');
-  const [fgTime]=await Promise.all([Panic.run(), Usdc.run(), Val.run()]);
+  const [fgTime]=await Promise.all([Panic.run(), Usdc.run(), Val.run(), Btc.run()]);
   const f=t=>t.toLocaleString('zh-CN',{hour12:false,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('oTime').innerHTML='<span>检查 '+f(new Date())+'</span>'+(fgTime?'<span>美股数据 '+f(fgTime)+'</span>':'')+'<span>数据源 CNN · History of Market · Morpho · DefiLlama · Ethereum RPC</span>';
+  document.getElementById('oTime').innerHTML='<span>检查 '+f(new Date())+'</span>'+(fgTime?'<span>美股数据 '+f(fgTime)+'</span>':'')+'<span>数据源 CNN · History of Market · Morpho · DefiLlama · Ethereum RPC · CoinGecko · Alternative.me</span>';
   log('全部检查完成');
   btn.disabled=false; lbl.textContent='立即检查';
 }
 document.getElementById('run').onclick=runAll;
 function route(){
-  document.body.classList.toggle('view-usdc', location.hash === '#usdc');
-  document.body.classList.toggle('view-income', location.hash === '#income');
+  const h = location.hash;
+  document.body.classList.toggle('view-usdc', h === '#usdc');
+  document.body.classList.toggle('view-income', h === '#income');
+  document.body.classList.toggle('view-btc', h === '#btc');
+  document.body.classList.toggle('sub', ['#usdc','#income','#btc'].includes(h));
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
